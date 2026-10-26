@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     meta_vision_model: str = ""
 
     typesafe_api_key: str = ""
+    typesafe_api_base_url: str = "https://api.typesafe.ai"
+
+    intron_api_key: str = ""
+    intron_stt_url: str = ""
 
     meta_app_id: str = ""
     meta_app_secret: str = ""

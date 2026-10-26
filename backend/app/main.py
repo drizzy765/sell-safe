@@ -7,8 +7,11 @@ from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
+from app.db.orders import OrderStore
 from app.db.storage import ObjectStorage
+from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
+from app.speech.base import SpeechClient
 
 
 class HealthResponse(BaseModel):
@@ -23,6 +26,9 @@ def create_app(
     provider: LLMProvider | None = None,
     storage: ObjectStorage | None = None,
     catalog: CatalogStore | None = None,
+    jev: JevClient | None = None,
+    orders: OrderStore | None = None,
+    speech: SpeechClient | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
@@ -33,6 +39,9 @@ def create_app(
     app.state.provider = provider
     app.state.storage = storage
     app.state.catalog = catalog
+    app.state.jev = jev
+    app.state.orders = orders
+    app.state.speech = speech
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

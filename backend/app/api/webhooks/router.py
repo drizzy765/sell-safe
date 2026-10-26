@@ -6,13 +6,20 @@ import json
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
+from app.agent.graph.harness import run_turn
 from app.agent.listing import handle_price_reply, handle_product_photo
+from app.agent.voice import handle_voice_note
 from app.channels.whatsapp.adapter import WhatsAppAdapter
 from app.db.catalog_store import CatalogStore, build_catalog_store
 from app.db.echo_store import EchoStore, build_store
+from app.db.orders import OrderStore, build_order_store
 from app.db.storage import ObjectStorage, build_storage
+from app.decisions.base import JevClient
+from app.decisions.factory import build_jev
 from app.llm.base import LLMProvider
 from app.llm.factory import build_provider
+from app.speech.base import SpeechClient
+from app.speech.factory import build_speech
 
 router = APIRouter()
 
@@ -50,6 +57,30 @@ def _storage(request: Request) -> ObjectStorage:
     if current is None:
         current = build_storage(request.app.state.settings)
         request.app.state.storage = current
+    return current
+
+
+def _jev(request: Request) -> JevClient:
+    current = request.app.state.jev
+    if current is None:
+        current = build_jev(request.app.state.settings)
+        request.app.state.jev = current
+    return current
+
+
+def _orders(request: Request) -> OrderStore:
+    current = request.app.state.orders
+    if current is None:
+        current = build_order_store(request.app.state.settings)
+        request.app.state.orders = current
+    return current
+
+
+def _speech(request: Request) -> SpeechClient:
+    current = request.app.state.speech
+    if current is None:
+        current = build_speech(request.app.state.settings)
+        request.app.state.speech = current
     return current
 
 
@@ -124,6 +155,21 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
                 message=message,
             )
             continue
+        if message.type == "audio":
+            background.add_task(
+                handle_voice_note,
+                adapter=adapter,
+                speech=_speech(request),
+                store=store,
+                jev=_jev(request),
+                provider=_provider(request),
+                catalog_store=_catalog(request),
+                order_store=_orders(request),
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                message=message,
+            )
+            continue
         if message.type == "text" and message.text:
             catalog = request.app.state.catalog
             if catalog is None and settings.supabase_url and settings.supabase_service_role_key:
@@ -139,5 +185,16 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
                     text=message.text,
                 )
             else:
-                background.add_task(adapter.send_text, message.sender_id, message.text)
+                background.add_task(
+                    run_turn,
+                    message=message,
+                    seller_id=seller_id,
+                    buyer_id=buyer_id,
+                    channel_adapter=adapter,
+                    store=store,
+                    jev=_jev(request),
+                    provider=_provider(request),
+                    catalog_store=_catalog(request),
+                    order_store=_orders(request),
+                )
     return Response(status_code=200)

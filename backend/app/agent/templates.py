@@ -22,6 +22,15 @@ def ask_seller_reread() -> str:
     return "I couldn't read that photo. Send it again."
 
 
+def fallback_ask_type(language: str) -> str:
+    fallbacks = {
+        "en": "I couldn't hear that clearly. Please type your message.",
+        "pcm": "I no hear am well. Abeg type am.",
+        "yo": "N kò gbọ́ rẹ̀ dáadáa. Jọ̀wọ́ kọ ọ sílẹ̀.",
+    }
+    return fallbacks.get(language, fallbacks["en"])
+
+
 def parse_naira(text: str) -> int | None:
     cleaned = text.strip().replace(",", "").replace(" ", "")
     for prefix in ("₦", "NGN", "N"):

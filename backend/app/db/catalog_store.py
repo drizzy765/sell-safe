@@ -18,6 +18,10 @@ class CatalogStore(Protocol):
 
     def save_product(self, seller_id: str, buyer_id: str, price_kobo: int) -> dict | None: ...
 
+    def search_products(self, seller_id: str, query: str, limit: int = 5) -> list[dict]: ...
+
+    def get_product(self, seller_id: str, product_id: str) -> dict | None: ...
+
 
 class MemoryCatalogStore:
     def __init__(self) -> None:
@@ -67,6 +71,21 @@ class MemoryCatalogStore:
         self.products.append(product)
         draft["status"] = "saved"
         return product
+
+    def search_products(self, seller_id: str, query: str, limit: int = 5) -> list[dict]:
+        q = query.lower()
+        return [
+            p
+            for p in self.products
+            if p["seller_id"] == seller_id
+            and (q in p["name"].lower() or q in (p.get("description") or "").lower())
+        ][:limit]
+
+    def get_product(self, seller_id: str, product_id: str) -> dict | None:
+        for p in self.products:
+            if p["id"] == product_id and p["seller_id"] == seller_id:
+                return p
+        return None
 
 
 def _is_pending(draft: dict, seller_id: str, buyer_id: str) -> bool:
@@ -143,6 +162,30 @@ class SupabaseCatalogStore:
             .execute()
         )
         return created.data[0]
+
+    def search_products(self, seller_id: str, query: str, limit: int = 5) -> list[dict]:
+        found = (
+            self._client.table("products")
+            .select("id, name, description, price_kobo, stock, image_path")
+            .eq("seller_id", seller_id)
+            .eq("active", True)
+            .ilike("name", f"%{query}%")
+            .limit(limit)
+            .execute()
+        )
+        return found.data or []
+
+    def get_product(self, seller_id: str, product_id: str) -> dict | None:
+        found = (
+            self._client.table("products")
+            .select("id, name, description, price_kobo, stock, image_path")
+            .eq("seller_id", seller_id)
+            .eq("id", product_id)
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        return rows[0] if rows else None
 
 
 def build_catalog_store(settings: object) -> SupabaseCatalogStore:
