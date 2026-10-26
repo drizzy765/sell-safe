@@ -63,6 +63,8 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 The checked-in workflow matches this. Ruff and pytest read `pyproject.toml` (Python 3.11, `pytest -q -m "not live"`, docs left out of the formatter). Job names `test` and `secrets` are the required checks in branch protection. A web job (`npm ci && npm run lint && npm run build`) is added only when the onboarding site exists.
 
