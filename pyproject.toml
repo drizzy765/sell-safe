@@ -1,0 +1,24 @@
+[project]
+name = "sell-safe"
+version = "0.1.0"
+description = "WhatsApp-first shop assistant that checks payment evidence before goods leave the shop."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]
+markers = ["live: calls real hosted APIs (excluded from CI)"]
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["backend"]
+# Ruff formats Python samples inside Markdown. Leave docs/ as written.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

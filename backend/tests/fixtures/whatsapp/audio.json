@@ -1,0 +1,26 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "waba-1",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {"phone_number_id": "1234567890"},
+            "messages": [
+              {
+                "from": "15550000001",
+                "id": "wamid.test-audio-1",
+                "timestamp": "1710000002",
+                "type": "audio",
+                "audio": {"id": "media-audio-1", "mime_type": "audio/ogg"}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
