@@ -1,0 +1,17 @@
+# AGENTS.md – instructions for AI coding agents
+- **Stack:** Python 3.11, FastAPI, async httpx, Pydantic v2, Supabase (supabase-py / asyncpg), pytest, ruff. Optional `dashboard/` is Next.js + TypeScript.
+- **Phase:** docs only right now; don't add code unless asked.
+- **Harness:** follow `docs/harness_engineering.md` and `.cursor/rules/`.
+- **Layout:** see `docs/architecture.md` and each folder README. Channels in `app/channels/`, LLM in `app/llm/`, Jev in `app/jev/`, verification in `app/verification/`, payments in `app/payments/`.
+- **Rules:**
+  - Never call an LLM SDK directly; use `LLMProvider` (`app/llm`). Never hardcode model names; read from env.
+  - Never let the LLM decide a payment verdict; only `app/verification/verdict.py` does.
+  - Money is integer kobo. Times are UTC `timestamptz`; display in WAT.
+  - Every webhook: verify signature on raw body, dedupe, return 200 fast, process async.
+  - No secrets in code, tests, fixtures or logs. New env var → add to `.env.example`.
+  - No real customer data/receipts in repo; use `evals/data/synthetic/`.
+  - Hosted APIs only; do not add local model weights or heavy deps (torch, etc.).
+  - Messages to users that state money/verdicts use templates in `app/agent/templates.py`.
+- **Commands:** `ruff check . && ruff format .` · `pytest -q -m "not live"` · `python -m evals.run`.
+- **Commits:** Conventional Commits, small PRs (see `docs/github_rules.md`).
+- **Before finishing a task:** tests pass, lint passes, docs updated.
