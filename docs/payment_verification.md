@@ -10,7 +10,7 @@
 | 1 | Screenshot only | Buyer image | Can never confirm alone → `UNVERIFIED` at best. |
 
 ## Step 1 – Screenshot extraction
-Llama vision → JSON (see `agent.md`). Store image privately; compute perceptual hash (`imagehash`) and SHA-256.
+Muse vision → JSON (see `agent.md`). Exact vision model id is **TODO verify**. Store image privately; compute perceptual hash (`imagehash`) and SHA-256. The model does not choose the verdict.
 
 ## Step 2 – Rule checks (`verification/rules.py`)
 | Rule id | Check | Effect |

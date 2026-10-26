@@ -12,7 +12,7 @@
 - Order flow end-to-end; duplicate message id processed once.
 - Paystack webhook before/after screenshot → CONFIRMED either way.
 - Release endpoint returns 409 without release_allowed.
-Live tests marked `@pytest.mark.live` (real Groq/Meta/Jev), run manually.
+Live tests marked `@pytest.mark.live` (real Meta Muse, Groq fallback, Jev, or Intron), run manually.
 
 ## Eval sets (`evals/`)
 ### 1. Fake-vs-real screenshot set (synthetic only)
@@ -34,7 +34,9 @@ Each has `labels.jsonl`: `{file, class, expected_verdict, amount_kobo, reference
 `evals/fixtures/paystack_events/*.json`, `bank_alerts.txt` (GTB/Access/Opay-style formats, fictional), `chain_txs.json`.
 
 ## Metrics & gates
-| Metric | Gate |
+These are **targets**, not results. Measured numbers, intervals, and the report template live in `docs/benchmark.md`. Until a frozen suite has been run, every result cell there stays `TBD`.
+
+| Metric | Target |
 |---|---|
 | False CONFIRMED on any fake | **0 (launch blocker)** |
 | Fake caught (SUSPICIOUS/NOT FOUND/UNVERIFIED) | 100% |
@@ -43,4 +45,8 @@ Each has `labels.jsonl`: `{file, class, expected_verdict, amount_kobo, reference
 | Intent accuracy | ≥ 90% |
 | Language accuracy | ≥ 90% |
 | p50 reply latency | < 4 s |
-Run: `python -m evals.run --provider groq` and `--provider meta`; output `evals/report.md` (confusion matrix) – include a screenshot in the write-up. Report numbers as measured on this synthetic set only; don't generalize.
+
+Run (when the runner exists): `python -m evals.run --suite <name> --dataset v1`. Compare Muse and the Groq fallback with the harness held fixed. Write the report under `evals/reports/`. Include a screenshot in the write-up only of a table that was actually produced. Report numbers as measured on that set only.
+
+### Speech set
+A small recorded Yoruba-English and Pidgin-English voice-note set for Intron STT (WER/CER and latency). Audio from people stays in `evals/data/private/` (gitignored). English is in the same suite. Igbo and Hausa are stretch and are not part of the launch gate.

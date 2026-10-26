@@ -5,7 +5,10 @@ from pydantic import BaseModel
 
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
+from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
+from app.db.storage import ObjectStorage
+from app.llm.base import LLMProvider
 
 
 class HealthResponse(BaseModel):
@@ -17,13 +20,19 @@ def create_app(
     settings: Settings | None = None,
     store: EchoStore | None = None,
     transport: object | None = None,
+    provider: LLMProvider | None = None,
+    storage: ObjectStorage | None = None,
+    catalog: CatalogStore | None = None,
 ) -> FastAPI:
-    """Build the app. Tests inject settings, an in-memory store, and an HTTP transport."""
+    """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
     app = FastAPI(title="Sell-Safe")
     app.state.settings = resolved
     app.state.store = store
     app.state.transport = transport
+    app.state.provider = provider
+    app.state.storage = storage
+    app.state.catalog = catalog
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

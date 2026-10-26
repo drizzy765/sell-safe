@@ -1,11 +1,12 @@
 # Agent Design
-Principle: **Jev decides, Llama talks and sees, code verifies.** The LLM never decides a payment verdict alone; the verification engine and evidence do.
+Principle: **Jev decides, Muse talks and sees, code verifies.** The LLM never decides a payment verdict alone; the verification engine and evidence do. Muse means the Meta Model API: Muse Spark for text and tools, Muse vision for images, Muse Image and SAM 3.1 when generation or segmentation is needed. Exact ids are **TODO verify**. Groq is only a temporary fallback behind `LLMProvider`.
 
 ## Pipeline per inbound message
 1. Dedupe (`messages.external_msg_id`), load seller + buyer + open order.
-2. Audio → `LLMProvider.transcribe`. Image → classify (product photo vs payment proof) with Jev on Llama-vision caption.
-3. Jev: intent, language, scam pressure (one call, multiple questions).
-4. Route: `price_question|order|chit_chat` → Llama with tools; `payment_proof` → verification engine; `complaint` → notify seller; seller commands (`/add`, `/summary`, `/release SS-1042`) → handlers.
+2. Audio → Intron Sahara STT (not the LLM). Write `transcript`, `language`, and `asr_confidence` on the message, then continue with the transcript as text. Image → Muse vision caption, then Jev `image_kind` (product photo vs payment proof).
+3. Jev: intent, language, scam pressure (one call, multiple questions). For audio, pass the STT language as a prior. Launch languages are `en`, `pcm`, `yo`. Igbo (`ig`) and Hausa (`ha`) are stretch on the speech path.
+4. Route: `price_question|order|chit_chat` → Muse Spark with tools; `payment_proof` → verification engine; `complaint` → notify seller; seller commands (`/add`, `/summary`, `/release SS-1042`) → handlers.
+5. If the inbound message was audio and voice replies are on, send the checked reply through Intron TTS. Otherwise send text. See `architecture.md` for the TTS fallback (English, Yoruba accent) when a `yo` or `pcm` voice is rejected.
 
 ## Tools (JSON-schema function calls)
 | Tool | Args | Returns |
@@ -21,8 +22,8 @@ Principle: **Jev decides, Llama talks and sees, code verifies.** The LLM never d
 Guard: tools validate seller scope; prices always come from DB, never from the model.
 
 ## Structured outputs
-- **Catalog extraction (vision):** `{name, description, suggested_price_kobo|null, category, colors[], confidence}` – seller must confirm price.
-- **Screenshot extraction (vision):** `{is_transfer_receipt, amount_kobo, currency, sender_name, sender_bank, recipient_name, recipient_acct_last4, reference, status_text, txn_time_iso, app_style, visual_anomalies[]}`.
+- **Catalog extraction (Muse vision):** `{name, description, suggested_price_kobo|null, category, colors[], confidence}` – seller must confirm price.
+- **Screenshot extraction (Muse vision):** `{is_transfer_receipt, amount_kobo, currency, sender_name, sender_bank, recipient_name, recipient_acct_last4, reference, status_text, txn_time_iso, app_style, visual_anomalies[]}`.
 - **Alert parse:** `{amount_kobo, type: credit|debit, narration, balance_kobo, txn_time_iso, bank}`.
 Invalid JSON → one retry with the error, then fall back to "ask seller".
 
@@ -54,4 +55,4 @@ Thresholds: see `payment_verification.md` (≥0.90 auto, 0.60–0.90 ask seller,
 - Log every LLM/Jev call with latency + cost estimate to `messages.jev_scores`/logs.
 
 ## Evals
-See `testing_and_evals.md`: intent/language accuracy (≥90% target on 100 labelled messages), extraction field accuracy, verdict confusion matrix with **zero false CONFIRMED** on fakes as the launch gate.
+Targets and fixtures: `testing_and_evals.md`. Claims, frozen suites, human ratings, and the results template: `benchmark.md`. The launch target is zero false CONFIRMED on fakes. That number stays unclaimed until the frozen suite has been run.

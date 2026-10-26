@@ -23,9 +23,11 @@ erDiagram
 | **payment_evidence** | payment_id, type enum `screenshot, va_webhook, mono_txn, bank_alert, chain_tx`, source_id (provider ref / tx hash / message id; unique per type → idempotency), extracted jsonb (amount_kobo, sender_name, sender_bank, sender_acct_last4, reference, txn_time, narration), raw_path (storage), trust_level int (1–4) |
 | **verdicts** | payment_id, verdict enum `CONFIRMED, NOT_FOUND, SUSPICIOUS, UNVERIFIED`, confidence numeric, reasons text[], jev_scores jsonb, rule_hits text[], decided_by enum `auto, seller`, release_allowed bool |
 | **fraud_signals** | kind enum `account_number, phone, device_hash, image_hash, name`, value_hash, reported_by_seller_id, evidence_id, severity 1–3, confirmed bool; index(kind, value_hash) |
-| **messages** | seller_id, buyer_id, channel, direction `in/out`, external_msg_id (unique → dedupe), type, text, media_path, intent, language, jev_scores jsonb |
+| **messages** | seller_id, buyer_id, channel, direction `in/out`, external_msg_id (unique → dedupe), type, text, transcript, media_path, intent, language, asr_confidence numeric, jev_scores jsonb |
 | **webhook_events** | provider, event_id unique, payload jsonb, processed_at (idempotency log) |
 | **daily_summaries** | seller_id, date, orders, paid_kobo, fakes_caught, naira_saved_kobo |
+
+**messages and speech.** `text` is what the agent used (the typed body, or the accepted transcript). `transcript` is the raw Intron STT string and is null for typed messages. `language` is `en`, `pcm`, or `yo` at launch, plus `ig` or `ha` when the stretch speech path is on; for audio, write the STT language code first and let Jev confirm it. `asr_confidence` is the recognizer's score from 0 to 1, null for typed messages and null when the STT payload has no score (**TODO verify** the response field). Audio bytes stay in private storage (`media_path`); do not put them in the row. Do not log the audio.
 
 **naira_saved_kobo** = sum of `expected_kobo` for payments with a SUSPICIOUS/NOT_FOUND verdict where goods were not released and no later CONFIRMED evidence arrived within 48h.
 

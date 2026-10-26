@@ -1,14 +1,14 @@
 # Harness Engineering (agent loop, state graph, context, guardrails)
-Principle: **Jev routes, Llama talks and sees, code verifies, the seller decides when unsure.**
+Principle: **Jev routes, Muse talks and sees, code verifies, the seller decides when unsure.** Muse Spark is the text and tool model. Muse vision reads images. Groq is a temporary dev fallback behind `LLMProvider`, not a second harness. Speech is Intron Sahara (see `architecture.md`). Exact Muse ids are **TODO verify**.
 
 ## 1. Harness loop
 Every inbound message runs the same loop:
-1. **Observe**: normalize the message (channel adapter), dedupe, load seller, buyer, open order, recent turns.
+1. **Observe**: normalize the message (channel adapter), dedupe, load seller, buyer, open order, recent turns. If the message is audio, Intron STT runs here and the transcript becomes the text the rest of the loop sees.
 2. **Route (Jev)**: intent, language, image_kind, scam_pressure, all in one call with probabilities.
-3. **Plan**: pick the branch (sales chat, catalog add, payment check, seller command, escalate). Llama plans only inside the sales-chat branch.
+3. **Plan**: pick the branch (sales chat, catalog add, payment check, seller command, escalate). Muse Spark plans only inside the sales-chat branch.
 4. **Call tools**: typed tool calls; outputs validated against schemas.
 5. **Verify**: the deterministic verification engine plus Jev scores make the verdict; reply checks (no invented prices, correct language).
-6. **Respond**: templates for money and verdicts, Llama-generated text for everything else; send via adapter; log the trace.
+6. **Respond**: templates for money and verdicts, Muse-generated text for everything else; send via the adapter. If the buyer sent audio and TTS is enabled, Intron speaks that same checked text. Log the trace.
 
 ## 2. State graph (LangGraph-style)
 ```mermaid

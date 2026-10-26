@@ -133,7 +133,7 @@ Standing checks for every code task: `ruff check . && ruff format --check .`, `p
 
 ## Task 6: LLMProvider, Groq chat, and FakeProvider
 
-**Description:** Define `LLMProvider.chat`, `vision`, and `transcribe`. Groq chat uses the OpenAI-compatible endpoint and model names from env. `FakeProvider` returns canned results for tests. Nothing else imports an LLM SDK.
+**Description:** Define `LLMProvider.chat` and `vision`. Groq chat uses the OpenAI-compatible endpoint and model names from env, as a temporary fallback. `FakeProvider` returns canned results for tests. Nothing else imports an LLM SDK. Buyer speech is Intron Sahara (`docs/architecture.md`), not this provider.
 
 **Acceptance criteria:**
 - [ ] `chat` can request JSON-schema output and tools
@@ -638,7 +638,7 @@ Standing checks for every code task: `ruff check . && ruff format --check .`, `p
 
 ## Task 27: Voice-note transcription
 
-**Description:** Audio messages call `LLMProvider.transcribe` (Groq Whisper unless Meta transcription is confirmed) and the transcript re-enters the graph as text.
+**Description:** Audio messages call Intron Sahara STT (Yoruba-English `yo`, Pidgin-English `pcm`, English `en`). The transcript, language, and ASR confidence are stored on the message, and the transcript re-enters the graph as text. TTS replies are optional and follow `docs/architecture.md`. Groq is not the speech path.
 
 **Acceptance criteria:**
 - [ ] A voice note with a fake transcript can search the catalog and create an order
@@ -646,15 +646,15 @@ Standing checks for every code task: `ruff check . && ruff format --check .`, `p
 - [ ] Audio bytes are not logged
 
 **Verification:**
-- [ ] Unit test with `FakeProvider.transcribe`
+- [ ] Unit test with a fake Intron client (no live call, no audio in logs)
 - [ ] Manual voice note on WhatsApp
 
 **Dependencies:** Tasks 6, 14
 
 **Files likely touched:**
+- `backend/app/speech/` (Intron STT/TTS client)
 - `backend/app/agent/graph/nodes.py`
-- `backend/app/llm/groq/client.py`
-- `backend/tests/unit/test_transcribe_route.py`
+- `backend/tests/unit/test_voice_note.py`
 
 **Estimated scope:** Small
 

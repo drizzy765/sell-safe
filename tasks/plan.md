@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sell-Safe is a WhatsApp-first shop assistant for Nigerian small sellers. A seller snaps a product photo and Llama vision writes the listing. Buyers ask prices and place orders in English, Pidgin, or Yoruba. Before goods leave the shop, a deterministic verification engine checks transfer screenshots against bank evidence (Paystack webhook, forwarded alert) and returns CONFIRMED, NOT FOUND, SUSPICIOUS, or UNVERIFIED. The LLM phrases replies. It never sets a payment verdict.
+Sell-Safe is a WhatsApp-first shop assistant for Nigerian small sellers. A seller snaps a product photo and Muse vision writes the listing. Exact Muse model ids are **TODO verify**. Groq is only a temporary fallback. Voice notes use Intron Sahara. Buyers ask prices and place orders in English, Pidgin, or Yoruba. Before goods leave the shop, a deterministic verification engine checks transfer screenshots against bank evidence (Paystack webhook, forwarded alert) and returns CONFIRMED, NOT FOUND, SUSPICIOUS, or UNVERIFIED. The LLM phrases replies. It never sets a payment verdict.
 
 Deadline: submit by **4 Nov 2026, 18:00 WAT** (hard stop 4 Nov 21:00 ET / 5 Nov 02:00 WAT). Feature freeze: **2 Nov, 23:59 WAT**. Today is 26 Oct. The repo is docs and empty folders. No application code yet.
 
@@ -13,7 +13,7 @@ This plan follows `docs/execution_plan.md` and the specs in `docs/`. Tasks and a
 - **Code lives in the folders that already exist.** API under `backend/app/`. Onboarding site under `web/`. `docs/architecture.md` still shows a root `app/` and a `dashboard/` folder. Implement against `backend/` and `web/`, then update that doc when behaviour is real.
 - **Jev client lives in `backend/app/decisions/`.** That folder's README owns the TypeSafe client and question specs. Docs that say `app/jev/` mean this package.
 - **One brain, channel adapters at the edge.** WhatsApp, Instagram, and Messenger normalize to `InboundMessage`, then share the graph in `backend/app/agent/graph/`.
-- **`LLMProvider` is the only LLM entry.** Groq during development (`LLM_PROVIDER=groq`). Meta Model API when credits exist (`LLM_PROVIDER=meta`). Model names come from env. If Meta has no transcription, Groq Whisper stays on for audio only.
+- **`LLMProvider` is the only LLM entry.** Hackathon target is Meta Muse (`LLM_PROVIDER=meta`): Muse Spark for text and tools, Muse vision for images. Exact ids are **TODO verify**. Groq (`LLM_PROVIDER=groq`) is a temporary dev fallback behind the same protocol. Speech is Intron Sahara, not the LLM provider.
 - **Verdicts come only from `backend/app/verification/`.** Evidence trust level, rules R1–R9, and Jev probabilities feed `verdict.py`. Tools may read a verdict. They may not invent one. A screenshot alone never sets `release_allowed`.
 - **Money is integer kobo. Times are UTC `timestamptz`, shown in WAT.** User-facing amounts, account details, and verdicts use fixed templates.
 - **Webhooks:** verify the signature on the raw body, dedupe, return 200 quickly, process asynchronously.

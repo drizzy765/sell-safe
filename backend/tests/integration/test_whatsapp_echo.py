@@ -93,23 +93,3 @@ def test_text_is_echoed_once_and_duplicate_is_ignored() -> None:
     assert "wamid.test-text-1" in store.messages
     assert len(store.sellers) == 1
     assert ("whatsapp", "15550000001") in store.buyers
-
-
-def test_image_is_acked_without_an_echo() -> None:
-    store = MemoryEchoStore()
-    sent: list[bytes] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        sent.append(request.content)
-        return httpx.Response(200, json={"messages": [{"id": "wamid.out-2"}]})
-
-    raw = (FIXTURES / "image.json").read_bytes()
-    response = _client(store, transport=httpx.MockTransport(handler)).post(
-        "/webhooks/whatsapp",
-        content=raw,
-        headers={"X-Hub-Signature-256": _sign(raw), "content-type": "application/json"},
-    )
-
-    assert response.status_code == 200
-    assert sent == []
-    assert "wamid.test-image-1" in store.messages

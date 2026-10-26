@@ -86,7 +86,19 @@ class WhatsAppAdapter:
         raise NotImplementedError
 
     async def fetch_media(self, media_id: str) -> bytes:
-        raise NotImplementedError
+        version = self._settings.graph_api_version
+        token = self._settings.whatsapp_access_token
+        if not version or not token:
+            raise RuntimeError("WhatsApp media download is not configured")
+        headers = {"Authorization": f"Bearer {token}"}
+        meta_url = f"{_GRAPH_HOST}/{version}/{media_id}"
+        async with httpx.AsyncClient(transport=self._transport) as client:
+            meta = await client.get(meta_url, headers=headers)
+            meta.raise_for_status()
+            download_url = str(meta.json()["url"])
+            media = await client.get(download_url, headers=headers)
+            media.raise_for_status()
+        return media.content
 
 
 def _contact_names(value: dict) -> dict[str, str]:
