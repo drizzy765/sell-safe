@@ -9,7 +9,8 @@ flowchart LR
   GW[Channel Adapters<br/>/webhooks/*] --> Q[Message Router]
   Q --> JEV[Jev: intent, language, scam]
   Q --> AG[Agent Orchestrator]
-  AG --> LLM[LLMProvider<br/>Meta Llama / Groq]
+  AG --> LLM[LLMProvider<br/>Muse / Groq fallback]
+  AG --> SP[Intron Sahara<br/>STT + TTS]
   AG --> TOOLS[Tools: catalog, orders, verify]
   TOOLS --> DB[(Supabase Postgres)]
   TOOLS --> ST[(Supabase Storage)]
@@ -50,15 +51,23 @@ class ChannelAdapter(Protocol):
 `InboundMessage(channel, external_id, sender_id, seller_id, type[text|image|audio], text, media_id, ts)`. All three channels use Meta Graph webhooks with `X-Hub-Signature-256` (HMAC-SHA256 with app secret).
 
 ## LLM provider abstraction
+Speech does not go through this protocol. See Speech below.
 ```python
 class LLMProvider(Protocol):
     async def chat(self, messages, tools=None, json_schema=None) -> LLMResult: ...
     async def vision(self, image: bytes, prompt: str, json_schema) -> dict: ...
-    async def transcribe(self, audio: bytes) -> str: ...
 ```
-- `groq`: OpenAI-compatible `https://api.groq.com/openai/v1`, Llama models (+ Whisper for transcription).
-- `meta`: Meta Model API (dev.meta.ai). **TODO verify** base URL, model names, vision + tool-calling support from official docs before switching; config via `META_API_BASE_URL`, `META_TEXT_MODEL`, `META_VISION_MODEL`.
-- If Meta lacks transcription, keep Groq Whisper for audio only and note it in the write-up.
+- `meta` (hackathon target): Meta Model API, base `https://api.meta.ai/v1` (checked 2026-10-26). Muse Spark series for text and tool calls. Muse vision for images. Muse Image and SAM 3.1 are the image-generation and segmentation models when those calls are added. Exact model ids are **TODO verify**. Env: `META_API_KEY`, `META_API_BASE_URL`, `META_TEXT_MODEL`, `META_VISION_MODEL`.
+- `groq`: temporary dev fallback only, behind `LLM_PROVIDER`. OpenAI-compatible `https://api.groq.com/openai/v1`. Used when Meta credits are not available, and as the one-shot timeout fallback when both are configured. It is not the model the write-up claims. Exact fallback ids are **TODO verify**.
+
+## Speech (Intron Sahara v2.5)
+Buyer voice notes and voice replies use Intron, not the LLM provider. Key: `INTRON_API_KEY` (Bearer). Model name in this design is Sahara v2.5; **TODO verify** the id the API expects if a request takes one.
+
+**STT.** Language codes from the [supported-languages](https://docs.voice.intron.io/docs/stt/supported-languages) page (checked 2026-10-26): Yoruba-English `yo` and Pidgin-English `pcm` are code-switched; English `en` too. Igbo-English `ig` and Hausa-English `ha` are stretch. The transcribe URL is **TODO verify** against the STT reference before wiring. Store the transcript, language code, and ASR confidence on `messages` (confidence stays null if the response has no score; field name **TODO verify**).
+
+**TTS.** `POST https://infer.voice.intron.io/tts/v1/generate` with `Authorization: Bearer`. JSON fields: `text`, `voice_language`, `voice_accent`, `voice_gender` (`male`/`female`), optional `output_audio_format` `wav` (default) or `opus`. Max 4096 characters. 30 requests/minute. A 503 after the long poll window includes a text id; poll [TTS status](https://docs.voice.intron.io/docs/tts/tts-status) instead of sending a second generate. Spec: [TTS generate](https://docs.voice.intron.io/docs/tts/tts-generate).
+
+The [accents page](https://docs.voice.intron.io/docs/tts/supported-languages-and-accents) lists Yoruba (`yo` / accent `yoruba`) and Pidgin (`pcm` / accent `pidgin`), plus English with a `yoruba` accent (checked 2026-10-26). A live call still has to confirm those voices (**TODO verify**). If `yo` or `pcm` is rejected, speak the same reply as English with `voice_language=en` and `voice_accent=yoruba`. Money and verdict lines are still the fixed templates; TTS only reads that text. Voice replies are on the cut list. STT is not.
 
 ## Sequence: buyer order
 ```mermaid
@@ -67,7 +76,7 @@ sequenceDiagram
   participant WA as WhatsApp
   participant API as Sell-Safe API
   participant J as Jev
-  participant L as Llama
+  participant L as Muse Spark
   participant DB as Supabase
   B->>WA: "Abeg how much for the black bag?"
   WA->>API: POST /webhooks/whatsapp
@@ -89,7 +98,7 @@ sequenceDiagram
 sequenceDiagram
   participant B as Buyer
   participant API as Sell-Safe API
-  participant L as Llama Vision
+  participant L as Muse vision
   participant V as Verification Engine
   participant PS as Paystack
   participant J as Jev

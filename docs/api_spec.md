@@ -32,6 +32,16 @@ Rules: respond `200` within 2 s, process async (background task/queue); dedupe b
 | POST | `/jobs/daily-summary` | cron | `{sent}` |
 | POST | `/jobs/reminders` | cron | `{sent}` |
 
+## Speech (outbound, not a public route)
+Buyer audio is transcribed inside the webhook worker. There is no inbound Intron webhook.
+
+| Call | URL | Auth | Notes |
+|---|---|---|---|
+| STT | **TODO verify** against the Intron STT reference | `Authorization: Bearer $INTRON_API_KEY` | Sahara v2.5. Language `yo`, `pcm`, `en`; stretch `ig`, `ha`. Codes: [supported languages](https://docs.voice.intron.io/docs/stt/supported-languages). |
+| TTS | `POST https://infer.voice.intron.io/tts/v1/generate` | same | JSON `text`, `voice_language`, `voice_accent`, `voice_gender`, optional `output_audio_format` (`wav` or `opus`). Max 4096 characters. 30 requests/minute. `503` returns a text id to poll ([TTS status](https://docs.voice.intron.io/docs/tts/tts-status)), not a second generate. Spec: [TTS generate](https://docs.voice.intron.io/docs/tts/tts-generate). |
+
+The accents list includes Yoruba and Pidgin (checked 2026-10-26). Treat that as unverified until a live call succeeds (**TODO verify**). On rejection, retry the same text with `voice_language=en` and `voice_accent=yoruba`. Persisted message fields: `transcript`, `language`, `asr_confidence` (`data_model.md`).
+
 ## Verdict object
 ```json
 {"payment_id":"…","order_ref":"SS-1042","verdict":"SUSPICIOUS","confidence":0.12,

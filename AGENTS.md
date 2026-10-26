@@ -4,7 +4,7 @@
 - **Harness:** follow `docs/harness_engineering.md` and `.cursor/rules/`.
 - **Layout:** see `docs/architecture.md` and each folder README. Channels in `app/channels/`, LLM in `app/llm/`, Jev in `app/jev/`, verification in `app/verification/`, payments in `app/payments/`.
 - **Rules:**
-  - Never call an LLM SDK directly; use `LLMProvider` (`app/llm`). Never hardcode model names; read from env.
+  - Never call an LLM SDK directly; use `LLMProvider` (`app/llm`). Never hardcode model names; read from env. Hackathon models are Meta Muse (Spark for text/agent, Muse vision for images, Muse Image, SAM 3.1). Exact ids are **TODO verify**. Groq is only a temporary dev fallback behind `LLM_PROVIDER`. Speech is Intron Sahara, not the LLM provider.
   - Never let the LLM decide a payment verdict; only `app/verification/verdict.py` does.
   - Money is integer kobo. Times are UTC `timestamptz`; display in WAT.
   - Every webhook: verify signature on raw body, dedupe, return 200 fast, process async.

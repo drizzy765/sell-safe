@@ -39,3 +39,15 @@ def test_money_columns_are_integer_kobo_and_phones_are_hashed() -> None:
     assert "create table buyers (" in SQL
     buyers = SQL.split("create table buyers (", 1)[1].split("create table orders (", 1)[0]
     assert "\n    phone text" not in buyers
+
+
+def test_catalog_drafts_allow_one_pending_row() -> None:
+    drafts = (
+        Path(__file__).resolve().parents[2]
+        / "app"
+        / "db"
+        / "migrations"
+        / "0002_catalog_drafts.sql"
+    ).read_text(encoding="utf-8")
+    assert "create table catalog_drafts" in drafts
+    assert "where status = 'pending'" in drafts

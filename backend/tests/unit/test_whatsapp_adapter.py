@@ -99,9 +99,27 @@ async def test_send_text_posts_to_graph() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_image_and_fetch_media_are_not_implemented() -> None:
+async def test_send_image_is_not_implemented() -> None:
     adapter = WhatsAppAdapter(_settings())
     with pytest.raises(NotImplementedError):
         await adapter.send_image("15550000001", "https://example.test/a.jpg", "bag")
-    with pytest.raises(NotImplementedError):
-        await adapter.fetch_media("media-image-1")
+
+
+@pytest.mark.asyncio
+async def test_fetch_media_downloads_the_lookaside_url() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.path.endswith("/media-image-1"):
+            return httpx.Response(200, json={"url": "https://cdn.example/obj"})
+        return httpx.Response(200, content=b"jpeg-bytes")
+
+    adapter = WhatsAppAdapter(_settings(), transport=httpx.MockTransport(handler))
+    payload = await adapter.fetch_media("media-image-1")
+
+    assert payload == b"jpeg-bytes"
+    assert seen[0].url.path == "/v21.0/media-image-1"
+    assert str(seen[1].url) == "https://cdn.example/obj"
+    assert seen[0].headers["authorization"] == "Bearer test-token"
+    assert seen[1].headers["authorization"] == "Bearer test-token"
