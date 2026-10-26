@@ -47,6 +47,9 @@ Bootstrap order for this change:
 ```yaml
 name: ci
 on: [push, pull_request]
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
   test:
     runs-on: ubuntu-latest
