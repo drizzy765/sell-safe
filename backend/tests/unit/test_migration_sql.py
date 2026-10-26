@@ -51,3 +51,12 @@ def test_catalog_drafts_allow_one_pending_row() -> None:
     ).read_text(encoding="utf-8")
     assert "create table catalog_drafts" in drafts
     assert "where status = 'pending'" in drafts
+
+
+def test_traces_migration_adds_speech_columns_and_trace_table() -> None:
+    traces = (
+        Path(__file__).resolve().parents[2] / "app" / "db" / "migrations" / "0003_traces.sql"
+    ).read_text(encoding="utf-8")
+    assert "add column if not exists transcript" in traces
+    assert "add column if not exists asr_confidence" in traces
+    assert "create table if not exists traces" in traces

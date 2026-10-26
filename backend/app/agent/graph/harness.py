@@ -1,0 +1,85 @@
+"""Top-level harness: one inbound turn -> outbound reply."""
+
+from app.agent.graph.nodes import observe, respond, route, sales_agent
+from app.agent.graph.state import State
+from app.agent.tools.catalog import CatalogTools
+from app.agent.tools.orders import OrderTools
+from app.channels.base import ChannelAdapter, InboundMessage
+from app.db.catalog_store import CatalogStore
+from app.db.echo_store import EchoStore
+from app.db.orders import OrderStore
+from app.decisions.base import JevClient
+from app.llm.base import LLMProvider
+
+
+async def run_turn(
+    message: InboundMessage,
+    *,
+    seller_id: str,
+    buyer_id: str,
+    channel_adapter: ChannelAdapter,
+    store: EchoStore,
+    jev: JevClient,
+    provider: LLMProvider,
+    catalog_store: CatalogStore,
+    order_store: OrderStore,
+    business_name: str | None = None,
+) -> State:
+    state = State(
+        trace_id=f"{message.external_id}-{seller_id}",
+        channel=message.channel,
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        buyer_external_id=message.sender_id,
+        message=message,
+    )
+
+    state = observe(state, store)
+    seller_language = store.get_seller_language(seller_id)
+    state = await route(state, jev, seller_language)
+
+    catalog_tools = CatalogTools(seller_id, catalog_store)
+    order_tools = OrderTools(seller_id, buyer_id, order_store)
+
+    if state.intent in ("price_question", "order", "chit_chat"):
+        state = await sales_agent(state, provider, catalog_tools, order_tools, business_name)
+    elif state.intent == "payment_proof":
+        state.reply = fallback_for_language(state.language, "payment_check")
+    elif state.intent == "complaint":
+        state.reply = fallback_for_language(state.language, "escalate")
+    elif state.intent == "seller_command":
+        state.reply = fallback_for_language(state.language, "seller_command")
+    elif state.intent == "order_status":
+        state.reply = fallback_for_language(state.language, "order_status")
+    else:
+        state.reply = fallback_for_language(state.language, "unknown")
+
+    state = await respond(state, channel_adapter, message.sender_id, store)
+    return state
+
+
+def fallback_for_language(language: str, kind: str) -> str:
+    maps = {
+        "en": {
+            "payment_check": "I will check this payment and get back to you.",
+            "escalate": "I have passed this to the seller.",
+            "seller_command": "Seller commands are not available yet.",
+            "order_status": "Please send the order reference to check status.",
+            "unknown": "I'm not sure I understand. Can you rephrase?",
+        },
+        "pcm": {
+            "payment_check": "I go check this payment come back.",
+            "escalate": "I don send am to the seller.",
+            "seller_command": "Seller command no dey yet.",
+            "order_status": "Send the order ref make I check am.",
+            "unknown": "I no too understand. Abeg talk am again.",
+        },
+        "yo": {
+            "payment_check": "N ṣe ayẹ̀wò owo yìí, n óò padà.",
+            "escalate": "Mo ti fi ránṣẹ́ sí onísò.",
+            "seller_command": "Àṣẹ onísò kò sí láàárín.",
+            "order_status": "Jọ̀wọ́ ránṣẹ́ nọ́mba àṣẹ láti ṣe ayẹ̀wò rẹ̀.",
+            "unknown": "N ko gbọ́ dáadáa. Ṣé o lè sọ rẹ̀ padà?",
+        },
+    }
+    return maps.get(language, maps["en"]).get(kind, maps["en"]["unknown"])

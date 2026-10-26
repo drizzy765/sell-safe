@@ -8,10 +8,12 @@ class FakeProvider:
         self,
         *,
         chat_text: str = "ok",
+        chat: list[dict] | None = None,
         vision: dict | None = None,
         transcript: str = "hello",
         json_failures: int = 0,
     ) -> None:
+        self._chat_sequence = chat or []
         self.chat_text = chat_text
         self.vision_result = vision or {
             "name": "Black tote",
@@ -25,6 +27,7 @@ class FakeProvider:
         self.json_failures = json_failures
         self.vision_calls: list[str] = []
         self.chat_calls = 0
+        self.chat_messages: list[list[dict]] = []
 
     async def chat(
         self,
@@ -33,6 +36,16 @@ class FakeProvider:
         json_schema: dict | None = None,
     ) -> LLMResult:
         self.chat_calls += 1
+        self.chat_messages.append(messages)
+        if self.chat_calls <= len(self._chat_sequence):
+            item = self._chat_sequence[self.chat_calls - 1]
+            from app.llm.base import ToolCall
+
+            calls = [
+                ToolCall(id=c.get("id"), name=c["name"], arguments=c.get("arguments", "{}"))
+                for c in (item.get("tool_calls") or [])
+            ]
+            return LLMResult(text=item.get("text", ""), tool_calls=calls)
         return LLMResult(text=self.chat_text)
 
     async def vision(self, image: bytes, prompt: str, json_schema: dict) -> dict:

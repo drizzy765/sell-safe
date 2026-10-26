@@ -18,6 +18,8 @@ class EchoStore(Protocol):
         display_name: str | None = None,
     ) -> str: ...
 
+    def get_seller_language(self, seller_id: str) -> str: ...
+
     def save_inbound(
         self,
         *,
@@ -27,7 +29,28 @@ class EchoStore(Protocol):
         external_msg_id: str,
         message_type: str,
         text: str | None,
+        intent: str | None = None,
+        language: str | None = None,
+        transcript: str | None = None,
+        asr_confidence: float | None = None,
     ) -> bool: ...
+
+    def save_outbound(
+        self,
+        *,
+        seller_id: str,
+        buyer_id: str,
+        channel: str,
+        external_msg_id: str,
+        text: str,
+    ) -> None: ...
+
+    def recent_messages(
+        self,
+        seller_id: str,
+        buyer_id: str,
+        limit: int = 8,
+    ) -> list[dict]: ...
 
 
 class MemoryEchoStore:
@@ -35,12 +58,14 @@ class MemoryEchoStore:
 
     def __init__(self) -> None:
         self.sellers: dict[str, str] = {}
+        self.seller_languages: dict[str, str] = {"default": "en"}
         self.buyers: dict[tuple[str, str], str] = {}
-        self.messages: dict[str, dict[str, str | None]] = {}
+        self.messages: dict[str, dict[str, str | float | None]] = {}
 
     def ensure_seller(self, phone_number_id: str) -> str:
         if phone_number_id not in self.sellers:
             self.sellers[phone_number_id] = str(uuid4())
+            self.seller_languages[self.sellers[phone_number_id]] = "en"
         return self.sellers[phone_number_id]
 
     def ensure_buyer(
@@ -54,6 +79,9 @@ class MemoryEchoStore:
             self.buyers[key] = str(uuid4())
         return self.buyers[key]
 
+    def get_seller_language(self, seller_id: str) -> str:
+        return self.seller_languages.get(seller_id, "en")
+
     def save_inbound(
         self,
         *,
@@ -63,6 +91,10 @@ class MemoryEchoStore:
         external_msg_id: str,
         message_type: str,
         text: str | None,
+        intent: str | None = None,
+        language: str | None = None,
+        transcript: str | None = None,
+        asr_confidence: float | None = None,
     ) -> bool:
         if external_msg_id in self.messages:
             return False
@@ -70,10 +102,49 @@ class MemoryEchoStore:
             "seller_id": seller_id,
             "buyer_id": buyer_id,
             "channel": channel,
+            "direction": "in",
             "type": message_type,
             "text": text,
+            "intent": intent,
+            "language": language,
+            "transcript": transcript,
+            "asr_confidence": asr_confidence,
         }
         return True
+
+    def save_outbound(
+        self,
+        *,
+        seller_id: str,
+        buyer_id: str,
+        channel: str,
+        external_msg_id: str,
+        text: str,
+    ) -> None:
+        self.messages[external_msg_id] = {
+            "seller_id": seller_id,
+            "buyer_id": buyer_id,
+            "channel": channel,
+            "direction": "out",
+            "type": "text",
+            "text": text,
+        }
+
+    def recent_messages(
+        self,
+        seller_id: str,
+        buyer_id: str,
+        limit: int = 8,
+    ) -> list[dict]:
+        rows = [
+            msg
+            for msg in self.messages.values()
+            if msg.get("seller_id") == seller_id and msg.get("buyer_id") == buyer_id
+        ]
+        rows.sort(
+            key=lambda m: str(m.get("created_at", "") or m.get("external_msg_id", "")), reverse=True
+        )
+        return rows[-limit:]
 
 
 def _is_duplicate(exc: BaseException) -> bool:
@@ -134,6 +205,19 @@ class SupabaseEchoStore:
         created = self._client.table("buyers").insert(payload).execute()
         return str(created.data[0]["id"])
 
+    def get_seller_language(self, seller_id: str) -> str:
+        found = (
+            self._client.table("sellers")
+            .select("default_language")
+            .eq("id", seller_id)
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        if rows:
+            return str(rows[0].get("default_language") or "en")
+        return "en"
+
     def save_inbound(
         self,
         *,
@@ -143,8 +227,12 @@ class SupabaseEchoStore:
         external_msg_id: str,
         message_type: str,
         text: str | None,
+        intent: str | None = None,
+        language: str | None = None,
+        transcript: str | None = None,
+        asr_confidence: float | None = None,
     ) -> bool:
-        row: dict[str, str | None] = {
+        row: dict[str, str | float | None] = {
             "seller_id": seller_id,
             "buyer_id": buyer_id,
             "channel": channel,
@@ -152,6 +240,10 @@ class SupabaseEchoStore:
             "external_msg_id": external_msg_id,
             "type": message_type,
             "text": text,
+            "intent": intent,
+            "language": language,
+            "transcript": transcript,
+            "asr_confidence": asr_confidence,
         }
         try:
             self._client.table("messages").insert(row).execute()
@@ -160,6 +252,44 @@ class SupabaseEchoStore:
                 return False
             raise
         return True
+
+    def save_outbound(
+        self,
+        *,
+        seller_id: str,
+        buyer_id: str,
+        channel: str,
+        external_msg_id: str,
+        text: str,
+    ) -> None:
+        row: dict[str, str | None] = {
+            "seller_id": seller_id,
+            "buyer_id": buyer_id,
+            "channel": channel,
+            "direction": "out",
+            "external_msg_id": external_msg_id,
+            "type": "text",
+            "text": text,
+        }
+        self._client.table("messages").insert(row).execute()
+
+    def recent_messages(
+        self,
+        seller_id: str,
+        buyer_id: str,
+        limit: int = 8,
+    ) -> list[dict]:
+        found = (
+            self._client.table("messages")
+            .select("direction, type, text, intent, language, created_at")
+            .eq("seller_id", seller_id)
+            .eq("buyer_id", buyer_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        rows = found.data or []
+        return list(reversed(rows))
 
 
 def build_store(settings: object) -> SupabaseEchoStore:
