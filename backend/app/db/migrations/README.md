@@ -1,3 +1,3 @@
 # backend/app/db/migrations
 
-SQL migrations for Supabase (placeholder).
+`0001_init.sql` is the initial Supabase schema from `docs/data_model.md`. Apply it once in the Supabase SQL editor or with `supabase db push`.

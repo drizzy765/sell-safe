@@ -1,3 +1,3 @@
 # .github/workflows
 
-CI planned: ruff lint+format check, pytest (not live), gitleaks secret scan; dashboard lint/build if web exists. Spec in docs/github_rules.md. (No workflow file yet: docs-only phase.)
+CI (`.github/workflows/ci.yml`): ruff lint and format check, pytest excluding live tests, and gitleaks. Spec in `docs/github_rules.md`. The web npm job is added when the onboarding site exists.
