@@ -51,6 +51,8 @@ class MemoryOrderStore:
         items: list[dict],
         total_kobo: int,
     ) -> dict:
+        from datetime import UTC, datetime
+
         order = {
             "id": str(uuid4()),
             "seller_id": seller_id,
@@ -61,6 +63,7 @@ class MemoryOrderStore:
             "status": "awaiting_payment",
             "reminder_count": 0,
             "expires_at": None,
+            "created_at": datetime.now(tz=UTC).isoformat(),
         }
         self.orders.append(order)
         return order

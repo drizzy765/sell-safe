@@ -7,8 +7,10 @@ from typing import Any
 from app.agent.templates import order_cancelled, order_released
 from app.channels.base import ChannelAdapter
 from app.db.echo_store import EchoStore
+from app.db.fraud_store import FraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
+from app.verification.fraud import dispute_fake_for_evidence, report_fake_from_evidence
 
 
 async def seller_command_agent(
@@ -21,6 +23,8 @@ async def seller_command_agent(
     store: EchoStore,
     order_store: OrderStore,
     payment_store: PaymentStore,
+    fraud_store: FraudStore | None = None,
+    pii_salt: str = "",
 ) -> str:
     """Handle a seller command message and return a reply text."""
     parts = message_text.strip().split()
@@ -58,10 +62,67 @@ async def seller_command_agent(
             payment_store=payment_store,
         )
 
-    if command in ("/fake", "/notfake"):
-        return "Fraud memory commands are coming in the next phase."
+    if command == "/fake":
+        if fraud_store is None:
+            return "Fraud memory is not configured."
+        return _mark_fake(
+            order,
+            seller_id=seller_id,
+            store=store,
+            payment_store=payment_store,
+            fraud_store=fraud_store,
+            pii_salt=pii_salt,
+        )
+
+    if command == "/notfake":
+        if fraud_store is None:
+            return "Fraud memory is not configured."
+        return _mark_not_fake(
+            order,
+            payment_store=payment_store,
+            fraud_store=fraud_store,
+        )
 
     return "Unknown command. Use /release, /reject, /fake, or /notfake."
+
+
+def _mark_fake(
+    order: dict[str, Any],
+    *,
+    seller_id: str,
+    store: EchoStore,
+    payment_store: PaymentStore,
+    fraud_store: FraudStore,
+    pii_salt: str,
+) -> str:
+    evidence = payment_store.get_evidence_for_order(order["id"])
+    if not evidence:
+        return f"Order {order['ref']} has no payment evidence to flag."
+    buyer = store.get_buyer_by_id(order["buyer_id"])
+    phone_hash = None
+    if buyer and buyer.get("phone_hash"):
+        phone_hash = str(buyer["phone_hash"])
+    inserted = report_fake_from_evidence(
+        fraud_store,
+        seller_id=seller_id,
+        evidence_rows=evidence,
+        pii_salt=pii_salt,
+        buyer_phone_hash=phone_hash,
+    )
+    return f"Flagged order {order['ref']} as fake ({len(inserted)} signal(s) saved)."
+
+
+def _mark_not_fake(
+    order: dict[str, Any],
+    *,
+    payment_store: PaymentStore,
+    fraud_store: FraudStore,
+) -> str:
+    evidence = payment_store.get_evidence_for_order(order["id"])
+    if not evidence:
+        return f"Order {order['ref']} has no payment evidence to dispute."
+    count = dispute_fake_for_evidence(fraud_store, evidence_rows=evidence)
+    return f"Disputed fraud flags for {order['ref']} ({count} signal(s) updated)."
 
 
 async def _release_order(

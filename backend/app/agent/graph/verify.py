@@ -11,11 +11,13 @@ from app.agent.templates import (
 )
 from app.channels.base import ChannelAdapter, InboundMessage
 from app.db.echo_store import EchoStore
+from app.db.fraud_store import FraudStore, MemoryFraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
 from app.decisions.base import JevClient, RouteScores
 from app.llm.base import LLMProvider
 from app.verification.extract import AskResend, ReceiptExtraction, extract_receipt
+from app.verification.fraud import lookup_confirmed_signals
 from app.verification.matchers import EvidenceMatch, find_matching_evidence
 from app.verification.rules import RulesResult, apply_rules
 from app.verification.verdict import Verdict, decide_verdict
@@ -41,6 +43,14 @@ def _seller_account_info(seller: dict[str, Any] | None) -> tuple[str | None, str
     return virtual_account.get("last4"), seller.get("business_name") or seller.get("name")
 
 
+def _buyer_phone_hash(store: EchoStore, buyer_id: str) -> str | None:
+    buyer = store.get_buyer_by_id(buyer_id)
+    if buyer is None:
+        return None
+    value = buyer.get("phone_hash")
+    return str(value) if value else None
+
+
 def _run_verdict(
     order: dict[str, Any],
     extraction: ReceiptExtraction,
@@ -51,15 +61,26 @@ def _run_verdict(
     exclude_evidence_ids: set[str] | None = None,
     current_payment_id: str | None = None,
     jev_scores: RouteScores | None = None,
+    fraud_store: FraudStore | None = None,
+    buyer_phone_hash: str | None = None,
 ) -> tuple[RulesResult, EvidenceMatch | None, Verdict]:
+    signals: list[dict[str, Any]] = []
+    if fraud_store is not None:
+        signals = lookup_confirmed_signals(
+            fraud_store,
+            extraction,
+            pii_salt=pii_salt,
+            buyer_phone_hash=buyer_phone_hash,
+        )
     rules_result = apply_rules(
         order,
         extraction,
         evidence_rows,
-        fraud_signals=[],
+        fraud_signals=signals,
         seller_account_last4=seller_last4,
         seller_name=seller_name,
         pii_salt=pii_salt,
+        buyer_phone_hash=buyer_phone_hash,
         exclude_evidence_ids=exclude_evidence_ids,
         current_payment_id=current_payment_id,
     )
@@ -80,6 +101,7 @@ async def verify_payment_turn(
     provider: LLMProvider,
     jev: JevClient | None = None,
     pii_salt: str = "",
+    fraud_store: FraudStore | None = None,
 ) -> VerifyResult:
     """Run the payment verification branch for an image receipt."""
     if not message.media_id:
@@ -112,6 +134,7 @@ async def verify_payment_turn(
     seller = store.get_seller(seller_id)
     seller_last4, seller_name = _seller_account_info(seller)
     evidence_rows = payment_store.get_evidence_for_order(order["id"])
+    phone_hash = _buyer_phone_hash(store, buyer_id)
 
     rules_result, _, verdict = _run_verdict(
         order,
@@ -121,6 +144,8 @@ async def verify_payment_turn(
         seller_name,
         pii_salt,
         jev_scores=jev_scores,
+        fraud_store=fraud_store or MemoryFraudStore(),
+        buyer_phone_hash=phone_hash,
     )
 
     _persist_evidence_and_verdict(
@@ -157,6 +182,7 @@ async def reevaluate_order_after_webhook(
     payment_store: PaymentStore,
     jev: JevClient | None = None,
     pii_salt: str = "",
+    fraud_store: FraudStore | None = None,
 ) -> Verdict | None:
     """Re-run verdict for an order after new webhook evidence arrives.
 
@@ -185,6 +211,8 @@ async def reevaluate_order_after_webhook(
                 seller_default_language=seller_language,
                 image_extraction=extracted_data,
             )
+        phone_hash = _buyer_phone_hash(store, str(order["buyer_id"]))
+        resolved_fraud = fraud_store or MemoryFraudStore()
         rules_result, _, verdict = _run_verdict(
             order,
             extraction,
@@ -195,6 +223,8 @@ async def reevaluate_order_after_webhook(
             exclude_evidence_ids={source_row.get("id")} if source_row.get("id") else None,
             current_payment_id=source_row.get("payment_id"),
             jev_scores=jev_scores,
+            fraud_store=resolved_fraud,
+            buyer_phone_hash=phone_hash,
         )
     else:
         # Webhook-only: level-4 evidence alone is treated as CONFIRMED.
@@ -216,6 +246,7 @@ async def reevaluate_order_after_webhook(
                 seller_default_language=seller_language,
                 image_extraction=extracted_data,
             )
+        phone_hash = _buyer_phone_hash(store, str(order["buyer_id"]))
         rules_result, _, verdict = _run_verdict(
             order,
             extraction,
@@ -226,6 +257,8 @@ async def reevaluate_order_after_webhook(
             exclude_evidence_ids={best.get("id")} if best.get("id") else None,
             current_payment_id=best.get("payment_id"),
             jev_scores=jev_scores,
+            fraud_store=fraud_store or MemoryFraudStore(),
+            buyer_phone_hash=phone_hash,
         )
 
     payment = payment_store.get_payment_for_order(order["id"])

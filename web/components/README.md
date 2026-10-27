@@ -1,3 +1,3 @@
 # web/components
 
-PlatformTabs, Steps, StepCard, CodeBlock (copy button), StatusCheck, ScreenshotPlaceholder, Callout.
+UI for onboarding: `PlatformTabs`, `StepCard`, `CodeBlock`, theme helpers.

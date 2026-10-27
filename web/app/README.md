@@ -1,3 +1,3 @@
 # web/app
 
-App Router pages: / (platform picker + steps), /status, /faq.
+Next.js App Router pages. Home (`page.tsx`) hosts Sell-Safe Connect onboarding.

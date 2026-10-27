@@ -82,6 +82,19 @@ def order_released(ref: str) -> str:
     return f"Order {ref} is confirmed. The seller can release the goods now."
 
 
+def daily_summary_message(
+    *,
+    orders: int,
+    paid_kobo: int,
+    fakes_caught: int,
+    naira_saved_kobo: int,
+) -> str:
+    return (
+        f"Today: {orders} order(s), {format_naira(paid_kobo)} paid, "
+        f"{fakes_caught} fake(s) caught, {format_naira(naira_saved_kobo)} saved from fakes."
+    )
+
+
 def parse_naira(text: str) -> int | None:
     cleaned = text.strip().replace(",", "").replace(" ", "")
     for prefix in ("₦", "NGN", "N"):

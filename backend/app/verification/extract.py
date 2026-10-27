@@ -59,6 +59,7 @@ class ReceiptExtraction(BaseModel):
     currency: str = "NGN"
     sender_name: str | None = None
     sender_bank: str | None = None
+    sender_acct_last4: str | None = None
     recipient_name: str | None = None
     recipient_acct_last4: str | None = None
     reference: str | None = None
