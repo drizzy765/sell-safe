@@ -1,6 +1,7 @@
 """Top-level harness: one inbound turn -> outbound reply."""
 
 from app.agent.graph.nodes import observe, respond, route, sales_agent
+from app.agent.graph.seller_cmd import seller_command_agent
 from app.agent.graph.state import State
 from app.agent.graph.verify import verify_payment_turn
 from app.agent.tools.catalog import CatalogTools
@@ -28,6 +29,7 @@ async def run_turn(
     payment_store: PaymentStore | None = None,
     business_name: str | None = None,
 ) -> State:
+    """Run one inbound turn through the agent graph."""
     state = State(
         trace_id=f"{message.external_id}-{seller_id}",
         channel=message.channel,
@@ -59,13 +61,26 @@ async def run_turn(
                 order_store=order_store,
                 payment_store=payment_store,
                 provider=provider,
+                jev=jev,
             )
             state.reply = verify_result.verdict.verdict
             state.verdict = verify_result.verdict.model_dump()
     elif state.intent == "complaint":
         state.reply = fallback_for_language(state.language, "escalate")
     elif state.intent == "seller_command":
-        state.reply = fallback_for_language(state.language, "seller_command")
+        if payment_store is None:
+            state.reply = fallback_for_language(state.language, "seller_command")
+        else:
+            state.reply = await seller_command_agent(
+                message.text or "",
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                sender_id=message.sender_id,
+                channel_adapter=channel_adapter,
+                store=store,
+                order_store=order_store,
+                payment_store=payment_store,
+            )
     elif state.intent == "order_status":
         state.reply = fallback_for_language(state.language, "order_status")
     else:

@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.api.internal.jobs import router as internal_jobs_router
 from app.api.internal.orders import router as internal_orders_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
@@ -53,6 +54,7 @@ def create_app(
 
     app.include_router(webhooks_router)
     app.include_router(internal_orders_router)
+    app.include_router(internal_jobs_router)
     return app
 
 

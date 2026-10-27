@@ -120,7 +120,12 @@ def _build_app(
         store=store,
         transport=transport,
         provider=provider,
-        jev=FakeJev(intent="payment_proof", language="en"),
+        jev=FakeJev(
+            intent="payment_proof",
+            language="en",
+            evidence_match=1.0,
+            receipt_tampered=0.0,
+        ),
         catalog=MemoryCatalogStore(),
         orders=orders,
         payments=payments,

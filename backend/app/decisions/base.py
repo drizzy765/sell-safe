@@ -13,6 +13,8 @@ class RouteScores(BaseModel):
     scam_pressure: float = 0.0
     image_kind: str | None = None
     image_kind_scores: dict[str, float] | None = None
+    receipt_tampered: float = 0.0
+    evidence_match: float = 0.0
 
 
 class JevConfigError(RuntimeError):

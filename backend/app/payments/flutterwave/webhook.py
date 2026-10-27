@@ -26,8 +26,15 @@ def verify_flutterwave_hash(header: str | None, secret: str) -> bool:
 
 
 def _extract_evidence(data: dict[str, Any]) -> dict[str, Any]:
-    """Build payment_evidence.extracted from a Flutterwave transaction."""
-    amount_kobo = int(data.get("amount") or 0)
+    """Build payment_evidence.extracted from a Flutterwave transaction.
+
+    Flutterwave reports amounts in the major currency unit (naira), so we
+    convert to integer kobo for internal storage and matching.
+    """
+    try:
+        amount_kobo = int(round(float(data.get("amount") or 0) * 100))
+    except (TypeError, ValueError):
+        amount_kobo = 0
     return {
         "is_transfer_receipt": True,
         "amount_kobo": amount_kobo,

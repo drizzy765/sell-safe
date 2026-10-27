@@ -49,10 +49,37 @@ def suspicious_payment(reasons: list[str]) -> str:
     return f"This receipt looks fake: {reason_text}. Don't release the goods."
 
 
-def release_card(ref: str, verdict: str) -> str:
-    if verdict == "CONFIRMED":
+def release_card(ref: str, verdict: str, release_allowed: bool = False) -> str:
+    if verdict == "CONFIRMED" and release_allowed:
         return f"Order {ref} is CONFIRMED. Goods may leave the shop."
+    if verdict == "CONFIRMED" and not release_allowed:
+        return (
+            f"Order {ref} looks paid but needs your confirmation. "
+            "Reply /release {ref} to approve or /reject {ref} to cancel."
+        )
     return f"Order {ref}: {verdict}. Do NOT release goods."
+
+
+def hold_payment(total_kobo: int, ref: str) -> str:
+    return (
+        f"Money for {format_naira(total_kobo)} (order {ref}) may have arrived, "
+        "but I need the seller to confirm before goods leave."
+    )
+
+
+def buyer_reminder(ref: str, total_kobo: int) -> str:
+    return (
+        f"Reminder: order {ref} for {format_naira(total_kobo)} is still awaiting payment. "
+        "Please complete the transfer or send the receipt."
+    )
+
+
+def order_cancelled(ref: str) -> str:
+    return f"Order {ref} was cancelled because payment was not confirmed."
+
+
+def order_released(ref: str) -> str:
+    return f"Order {ref} is confirmed. The seller can release the goods now."
 
 
 def parse_naira(text: str) -> int | None:
