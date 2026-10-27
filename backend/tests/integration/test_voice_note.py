@@ -10,6 +10,7 @@ from app.config import Settings
 from app.db.catalog_store import MemoryCatalogStore
 from app.db.echo_store import MemoryEchoStore
 from app.db.orders import MemoryOrderStore
+from app.db.payments import MemoryPaymentStore
 from app.decisions.fake import FakeJev
 from app.llm.fake import FakeProvider
 from app.main import create_app
@@ -59,6 +60,7 @@ def test_voice_note_is_transcribed_and_replied() -> None:
         jev=FakeJev(intent="chit_chat", language="en"),
         catalog=MemoryCatalogStore(),
         orders=MemoryOrderStore(),
+        payments=MemoryPaymentStore(),
         speech=FakeSpeechClient(text="hello", language="en"),
     )
     client = TestClient(app)

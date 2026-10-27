@@ -52,6 +52,8 @@ class EchoStore(Protocol):
         limit: int = 8,
     ) -> list[dict]: ...
 
+    def get_seller(self, seller_id: str) -> dict | None: ...
+
 
 class MemoryEchoStore:
     """In-memory store for tests. A repeated external_msg_id returns False."""
@@ -59,13 +61,20 @@ class MemoryEchoStore:
     def __init__(self) -> None:
         self.sellers: dict[str, str] = {}
         self.seller_languages: dict[str, str] = {"default": "en"}
+        self.seller_details: dict[str, dict] = {}
         self.buyers: dict[tuple[str, str], str] = {}
         self.messages: dict[str, dict[str, str | float | None]] = {}
 
     def ensure_seller(self, phone_number_id: str) -> str:
         if phone_number_id not in self.sellers:
-            self.sellers[phone_number_id] = str(uuid4())
-            self.seller_languages[self.sellers[phone_number_id]] = "en"
+            seller_id = str(uuid4())
+            self.sellers[phone_number_id] = seller_id
+            self.seller_languages[seller_id] = "en"
+            self.seller_details[seller_id] = {
+                "id": seller_id,
+                "business_name": "Shop",
+                "virtual_account": {"last4": "1234", "bank": "Test Bank"},
+            }
         return self.sellers[phone_number_id]
 
     def ensure_buyer(
@@ -145,6 +154,9 @@ class MemoryEchoStore:
             key=lambda m: str(m.get("created_at", "") or m.get("external_msg_id", "")), reverse=True
         )
         return rows[-limit:]
+
+    def get_seller(self, seller_id: str) -> dict | None:
+        return self.seller_details.get(seller_id)
 
 
 def _is_duplicate(exc: BaseException) -> bool:
@@ -290,6 +302,17 @@ class SupabaseEchoStore:
         )
         rows = found.data or []
         return list(reversed(rows))
+
+    def get_seller(self, seller_id: str) -> dict | None:
+        found = (
+            self._client.table("sellers")
+            .select("id, business_name, virtual_account")
+            .eq("id", seller_id)
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        return rows[0] if rows else None
 
 
 def build_store(settings: object) -> SupabaseEchoStore:

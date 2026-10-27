@@ -7,12 +7,16 @@ from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from app.agent.graph.harness import run_turn
+from app.agent.graph.verify import verify_payment_turn
 from app.agent.listing import handle_price_reply, handle_product_photo
 from app.agent.voice import handle_voice_note
+from app.api.webhooks.flutterwave import router as flutterwave_router
+from app.api.webhooks.paystack import router as paystack_router
 from app.channels.whatsapp.adapter import WhatsAppAdapter
 from app.db.catalog_store import CatalogStore, build_catalog_store
 from app.db.echo_store import EchoStore, build_store
 from app.db.orders import OrderStore, build_order_store
+from app.db.payments import PaymentStore, build_payment_store
 from app.db.storage import ObjectStorage, build_storage
 from app.decisions.base import JevClient
 from app.decisions.factory import build_jev
@@ -73,6 +77,14 @@ def _orders(request: Request) -> OrderStore:
     if current is None:
         current = build_order_store(request.app.state.settings)
         request.app.state.orders = current
+    return current
+
+
+def _payments(request: Request) -> PaymentStore:
+    current = getattr(request.app.state, "payments", None)
+    if current is None:
+        current = build_payment_store(request.app.state.settings)
+        request.app.state.payments = current
     return current
 
 
@@ -144,16 +156,30 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
         if not saved:
             continue
         if message.type == "image":
-            background.add_task(
-                handle_product_photo,
-                adapter=adapter,
-                provider=_provider(request),
-                storage=_storage(request),
-                catalog=_catalog(request),
-                seller_id=seller_id,
-                buyer_id=buyer_id,
-                message=message,
-            )
+            catalog = _catalog(request)
+            if _orders(request).get_open_order(seller_id, buyer_id):
+                background.add_task(
+                    verify_payment_turn,
+                    message=message,
+                    seller_id=seller_id,
+                    buyer_id=buyer_id,
+                    channel_adapter=adapter,
+                    store=store,
+                    order_store=_orders(request),
+                    payment_store=_payments(request),
+                    provider=_provider(request),
+                )
+            else:
+                background.add_task(
+                    handle_product_photo,
+                    adapter=adapter,
+                    provider=_provider(request),
+                    storage=_storage(request),
+                    catalog=catalog,
+                    seller_id=seller_id,
+                    buyer_id=buyer_id,
+                    message=message,
+                )
             continue
         if message.type == "audio":
             background.add_task(
@@ -196,5 +222,10 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
                     provider=_provider(request),
                     catalog_store=_catalog(request),
                     order_store=_orders(request),
+                    payment_store=_payments(request),
                 )
     return Response(status_code=200)
+
+
+router.include_router(paystack_router)
+router.include_router(flutterwave_router)

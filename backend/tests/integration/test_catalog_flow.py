@@ -10,6 +10,8 @@ from app.agent.templates import ask_price, saved_product
 from app.config import Settings
 from app.db.catalog_store import MemoryCatalogStore
 from app.db.echo_store import MemoryEchoStore
+from app.db.orders import MemoryOrderStore
+from app.db.payments import MemoryPaymentStore
 from app.db.storage import MemoryStorage
 from app.llm.fake import FakeProvider
 from app.main import create_app
@@ -75,6 +77,8 @@ def test_photo_asks_for_price_then_saves_confirmed_kobo() -> None:
         provider=provider,
         storage=storage,
         catalog=catalog,
+        orders=MemoryOrderStore(),
+        payments=MemoryPaymentStore(),
     )
     client = TestClient(app)
     image = (FIXTURES / "image.json").read_bytes()

@@ -10,6 +10,7 @@ from app.config import Settings
 from app.db.catalog_store import MemoryCatalogStore
 from app.db.echo_store import MemoryEchoStore
 from app.db.orders import MemoryOrderStore
+from app.db.payments import MemoryPaymentStore
 from app.decisions.fake import FakeJev
 from app.llm.fake import FakeProvider
 from app.main import create_app
@@ -42,6 +43,7 @@ def _client(
     jev: FakeJev | None = None,
     catalog: MemoryCatalogStore | None = None,
     orders: MemoryOrderStore | None = None,
+    payments: MemoryPaymentStore | None = None,
     speech: FakeSpeechClient | None = None,
 ) -> TestClient:
     app = create_app(
@@ -52,6 +54,7 @@ def _client(
         jev=jev,
         catalog=catalog,
         orders=orders,
+        payments=payments or MemoryPaymentStore(),
         speech=speech,
     )
     return TestClient(app)
