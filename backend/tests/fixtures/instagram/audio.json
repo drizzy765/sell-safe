@@ -1,0 +1,27 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "ig-account-1",
+      "time": 1710000002000,
+      "messaging": [
+        {
+          "sender": {"id": "ig-buyer-1"},
+          "recipient": {"id": "ig-account-1"},
+          "timestamp": 1710000002000,
+          "message": {
+            "mid": "igmid.test-audio-1",
+            "attachments": [
+              {
+                "type": "audio",
+                "payload": {
+                  "url": "https://cdn.example/ig-audio-1.ogg"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

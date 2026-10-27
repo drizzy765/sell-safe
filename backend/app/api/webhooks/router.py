@@ -1,4 +1,4 @@
-"""Meta verify handshake and WhatsApp echo."""
+"""Meta verify handshake, WhatsApp, and Instagram messaging webhooks."""
 
 import hmac
 import json
@@ -13,6 +13,8 @@ from app.agent.voice import handle_voice_note
 from app.api.webhooks.alerts import router as alerts_router
 from app.api.webhooks.flutterwave import router as flutterwave_router
 from app.api.webhooks.paystack import router as paystack_router
+from app.channels.base import ChannelAdapter, InboundMessage
+from app.channels.instagram.adapter import InstagramAdapter
 from app.channels.whatsapp.adapter import WhatsAppAdapter
 from app.db.catalog_store import CatalogStore, build_catalog_store
 from app.db.echo_store import EchoStore, build_store
@@ -37,8 +39,12 @@ def _store(request: Request) -> EchoStore:
     return current
 
 
-def _adapter(request: Request) -> WhatsAppAdapter:
+def _whatsapp_adapter(request: Request) -> WhatsAppAdapter:
     return WhatsAppAdapter(request.app.state.settings, transport=request.app.state.transport)
+
+
+def _instagram_adapter(request: Request) -> InstagramAdapter:
+    return InstagramAdapter(request.app.state.settings, transport=request.app.state.transport)
 
 
 def _provider(request: Request) -> LLMProvider:
@@ -122,10 +128,104 @@ def meta_verify(request: Request) -> Response:
     return Response(status_code=403)
 
 
+def _dispatch_inbound(
+    *,
+    request: Request,
+    background: BackgroundTasks,
+    adapter: ChannelAdapter,
+    store: EchoStore,
+    message: InboundMessage,
+    seller_id: str,
+    buyer_id: str,
+    channel: str,
+) -> None:
+    settings = request.app.state.settings
+    saved = store.save_inbound(
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        channel=channel,
+        external_msg_id=message.external_id,
+        message_type=message.type,
+        text=message.text,
+    )
+    if not saved:
+        return
+    if message.type == "image":
+        catalog = _catalog(request)
+        if _orders(request).get_open_order(seller_id, buyer_id):
+            background.add_task(
+                verify_payment_turn,
+                message=message,
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                channel_adapter=adapter,
+                store=store,
+                order_store=_orders(request),
+                payment_store=_payments(request),
+                provider=_provider(request),
+                jev=_jev(request),
+            )
+        else:
+            background.add_task(
+                handle_product_photo,
+                adapter=adapter,
+                provider=_provider(request),
+                storage=_storage(request),
+                catalog=catalog,
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                message=message,
+            )
+        return
+    if message.type == "audio":
+        background.add_task(
+            handle_voice_note,
+            adapter=adapter,
+            speech=_speech(request),
+            store=store,
+            jev=_jev(request),
+            provider=_provider(request),
+            catalog_store=_catalog(request),
+            order_store=_orders(request),
+            seller_id=seller_id,
+            buyer_id=buyer_id,
+            message=message,
+        )
+        return
+    if message.type == "text" and message.text:
+        catalog = request.app.state.catalog
+        if catalog is None and settings.supabase_url and settings.supabase_service_role_key:
+            catalog = _catalog(request)
+        if catalog is not None and catalog.pending_draft(seller_id, buyer_id):
+            background.add_task(
+                handle_price_reply,
+                adapter=adapter,
+                catalog=catalog,
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                sender_id=message.sender_id,
+                text=message.text,
+            )
+        else:
+            background.add_task(
+                run_turn,
+                message=message,
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                channel_adapter=adapter,
+                store=store,
+                jev=_jev(request),
+                provider=_provider(request),
+                catalog_store=_catalog(request),
+                order_store=_orders(request),
+                payment_store=_payments(request),
+            )
+
+
 @router.post("/webhooks/whatsapp")
 async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Response:
     raw = await request.body()
-    adapter = _adapter(request)
+    adapter = _whatsapp_adapter(request)
     if not adapter.verify_signature(raw, request.headers):
         return JSONResponse(
             status_code=401,
@@ -146,86 +246,54 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
     for message in adapter.parse(payload):
         seller_id = store.ensure_seller(settings.whatsapp_phone_number_id)
         buyer_id = store.ensure_buyer("whatsapp", message.sender_id, message.display_name)
-        saved = store.save_inbound(
+        _dispatch_inbound(
+            request=request,
+            background=background,
+            adapter=adapter,
+            store=store,
+            message=message,
             seller_id=seller_id,
             buyer_id=buyer_id,
             channel="whatsapp",
-            external_msg_id=message.external_id,
-            message_type=message.type,
-            text=message.text,
         )
-        if not saved:
-            continue
-        if message.type == "image":
-            catalog = _catalog(request)
-            if _orders(request).get_open_order(seller_id, buyer_id):
-                background.add_task(
-                    verify_payment_turn,
-                    message=message,
-                    seller_id=seller_id,
-                    buyer_id=buyer_id,
-                    channel_adapter=adapter,
-                    store=store,
-                    order_store=_orders(request),
-                    payment_store=_payments(request),
-                    provider=_provider(request),
-                    jev=_jev(request),
-                )
-            else:
-                background.add_task(
-                    handle_product_photo,
-                    adapter=adapter,
-                    provider=_provider(request),
-                    storage=_storage(request),
-                    catalog=catalog,
-                    seller_id=seller_id,
-                    buyer_id=buyer_id,
-                    message=message,
-                )
-            continue
-        if message.type == "audio":
-            background.add_task(
-                handle_voice_note,
-                adapter=adapter,
-                speech=_speech(request),
-                store=store,
-                jev=_jev(request),
-                provider=_provider(request),
-                catalog_store=_catalog(request),
-                order_store=_orders(request),
-                seller_id=seller_id,
-                buyer_id=buyer_id,
-                message=message,
-            )
-            continue
-        if message.type == "text" and message.text:
-            catalog = request.app.state.catalog
-            if catalog is None and settings.supabase_url and settings.supabase_service_role_key:
-                catalog = _catalog(request)
-            if catalog is not None and catalog.pending_draft(seller_id, buyer_id):
-                background.add_task(
-                    handle_price_reply,
-                    adapter=adapter,
-                    catalog=catalog,
-                    seller_id=seller_id,
-                    buyer_id=buyer_id,
-                    sender_id=message.sender_id,
-                    text=message.text,
-                )
-            else:
-                background.add_task(
-                    run_turn,
-                    message=message,
-                    seller_id=seller_id,
-                    buyer_id=buyer_id,
-                    channel_adapter=adapter,
-                    store=store,
-                    jev=_jev(request),
-                    provider=_provider(request),
-                    catalog_store=_catalog(request),
-                    order_store=_orders(request),
-                    payment_store=_payments(request),
-                )
+    return Response(status_code=200)
+
+
+@router.post("/webhooks/instagram")
+async def instagram_webhook(request: Request, background: BackgroundTasks) -> Response:
+    raw = await request.body()
+    adapter = _instagram_adapter(request)
+    if not adapter.verify_signature(raw, request.headers):
+        return JSONResponse(
+            status_code=401,
+            content={"error": {"code": "invalid_signature", "message": "bad signature"}},
+        )
+    try:
+        payload = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"code": "invalid_json", "message": "body is not JSON"}},
+        )
+    if not isinstance(payload, dict):
+        return Response(status_code=200)
+
+    settings = request.app.state.settings
+    store = _store(request)
+    account_id = settings.instagram_account_id or settings.fb_page_id
+    for message in adapter.parse(payload):
+        seller_id = store.ensure_seller(account_id, channel="instagram")
+        buyer_id = store.ensure_buyer("instagram", message.sender_id, message.display_name)
+        _dispatch_inbound(
+            request=request,
+            background=background,
+            adapter=adapter,
+            store=store,
+            message=message,
+            seller_id=seller_id,
+            buyer_id=buyer_id,
+            channel="instagram",
+        )
     return Response(status_code=200)
 
 

@@ -69,3 +69,44 @@ def test_voice_note_is_transcribed_and_replied() -> None:
     assert response.status_code == 200
     assert len(sent) == 1
     assert json.loads(sent[0])["text"]["body"] == "ok"
+    saved = store.messages["wamid.test-audio-1"]
+    assert saved["transcript"] == "hello"
+    assert saved["language"] == "en"
+    assert saved["asr_confidence"] == 0.91
+
+
+def test_voice_note_stt_failure_asks_buyer_to_type() -> None:
+    store = MemoryEchoStore()
+    sent: list[bytes] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path.endswith("/media-audio-1"):
+            return httpx.Response(200, json={"url": "https://cdn.example/audio"})
+        if request.method == "GET":
+            return httpx.Response(200, content=b"ogg-bytes")
+        sent.append(request.content)
+        return httpx.Response(200, json={"messages": [{"id": "wamid.out"}]})
+
+    payload = json.loads((FIXTURES / "audio.json").read_text(encoding="utf-8"))
+    raw = json.dumps(payload).encode()
+    headers = {"X-Hub-Signature-256": _sign(raw), "content-type": "application/json"}
+
+    app = create_app(
+        _settings(),
+        store=store,
+        transport=httpx.MockTransport(handler),
+        provider=FakeProvider(chat_text="should-not-send"),
+        jev=FakeJev(intent="chit_chat", language="en"),
+        catalog=MemoryCatalogStore(),
+        orders=MemoryOrderStore(),
+        payments=MemoryPaymentStore(),
+        speech=FakeSpeechClient(fail=True),
+    )
+    client = TestClient(app)
+
+    response = client.post("/webhooks/whatsapp", content=raw, headers=headers)
+    assert response.status_code == 200
+    assert len(sent) == 1
+    body = json.loads(sent[0])["text"]["body"]
+    assert "type" in body.lower()
+    assert body != "should-not-send"

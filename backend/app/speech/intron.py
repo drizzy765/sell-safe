@@ -38,12 +38,19 @@ class IntronSpeechClient:
         headers = {"Authorization": f"Bearer {key}"}
         files: dict[str, Any] = {"file": ("audio.ogg", audio, "audio/ogg")}
         data = {"language": language_hint or "en"}
+        # Do not log `audio` — may contain buyer speech content.
         async with httpx.AsyncClient(transport=self._transport) as client:
             response = await client.post(url, data=data, files=files, headers=headers)
             response.raise_for_status()
             payload = response.json()
+        confidence_raw = payload.get("confidence", payload.get("asr_confidence"))
+        confidence: float | None
+        try:
+            confidence = float(confidence_raw) if confidence_raw is not None else None
+        except (TypeError, ValueError):
+            confidence = None
         return TranscriptResult(
-            text=str(payload.get("text") or ""),
+            text=str(payload.get("text") or payload.get("transcript") or ""),
             language=str(payload.get("language") or language_hint or "en"),
-            confidence=payload.get("confidence"),
+            confidence=confidence,
         )
