@@ -31,6 +31,30 @@ def fallback_ask_type(language: str) -> str:
     return fallbacks.get(language, fallbacks["en"])
 
 
+def confirmed_payment(total_kobo: int, sender_name: str | None, reference: str | None) -> str:
+    sender = f" from {sender_name}" if sender_name else ""
+    ref = f" ref {reference}" if reference else ""
+    return f"Money don land. {format_naira(total_kobo)}{sender}{ref}. You fit release the goods."
+
+
+def not_found_payment() -> str:
+    return (
+        "No money yet. Wait for the alert. We go recheck for 30 minutes. "
+        "No release the goods until I confirm."
+    )
+
+
+def suspicious_payment(reasons: list[str]) -> str:
+    reason_text = ", ".join(reasons) if reasons else "suspicious receipt"
+    return f"This receipt looks fake: {reason_text}. Don't release the goods."
+
+
+def release_card(ref: str, verdict: str) -> str:
+    if verdict == "CONFIRMED":
+        return f"Order {ref} is CONFIRMED. Goods may leave the shop."
+    return f"Order {ref}: {verdict}. Do NOT release goods."
+
+
 def parse_naira(text: str) -> int | None:
     cleaned = text.strip().replace(",", "").replace(" ", "")
     for prefix in ("₦", "NGN", "N"):

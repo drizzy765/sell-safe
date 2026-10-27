@@ -2,12 +2,14 @@
 
 from app.agent.graph.nodes import observe, respond, route, sales_agent
 from app.agent.graph.state import State
+from app.agent.graph.verify import verify_payment_turn
 from app.agent.tools.catalog import CatalogTools
 from app.agent.tools.orders import OrderTools
 from app.channels.base import ChannelAdapter, InboundMessage
 from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
 from app.db.orders import OrderStore
+from app.db.payments import PaymentStore
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
 
@@ -23,6 +25,7 @@ async def run_turn(
     provider: LLMProvider,
     catalog_store: CatalogStore,
     order_store: OrderStore,
+    payment_store: PaymentStore | None = None,
     business_name: str | None = None,
 ) -> State:
     state = State(
@@ -44,7 +47,21 @@ async def run_turn(
     if state.intent in ("price_question", "order", "chit_chat"):
         state = await sales_agent(state, provider, catalog_tools, order_tools, business_name)
     elif state.intent == "payment_proof":
-        state.reply = fallback_for_language(state.language, "payment_check")
+        if payment_store is None:
+            state.reply = fallback_for_language(state.language, "payment_check")
+        else:
+            verify_result = await verify_payment_turn(
+                message,
+                seller_id=seller_id,
+                buyer_id=buyer_id,
+                channel_adapter=channel_adapter,
+                store=store,
+                order_store=order_store,
+                payment_store=payment_store,
+                provider=provider,
+            )
+            state.reply = verify_result.verdict.verdict
+            state.verdict = verify_result.verdict.model_dump()
     elif state.intent == "complaint":
         state.reply = fallback_for_language(state.language, "escalate")
     elif state.intent == "seller_command":

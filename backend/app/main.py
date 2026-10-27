@@ -3,11 +3,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.api.internal.orders import router as internal_orders_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
 from app.db.orders import OrderStore
+from app.db.payments import PaymentStore
 from app.db.storage import ObjectStorage
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
@@ -28,6 +30,7 @@ def create_app(
     catalog: CatalogStore | None = None,
     jev: JevClient | None = None,
     orders: OrderStore | None = None,
+    payments: PaymentStore | None = None,
     speech: SpeechClient | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
@@ -41,6 +44,7 @@ def create_app(
     app.state.catalog = catalog
     app.state.jev = jev
     app.state.orders = orders
+    app.state.payments = payments
     app.state.speech = speech
 
     @app.get("/health", response_model=HealthResponse)
@@ -48,6 +52,7 @@ def create_app(
         return HealthResponse(status="ok", provider=resolved.llm_provider)
 
     app.include_router(webhooks_router)
+    app.include_router(internal_orders_router)
     return app
 
 

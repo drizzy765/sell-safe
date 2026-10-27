@@ -19,6 +19,8 @@ class OrderStore(Protocol):
 
     def get_order_by_ref(self, ref: str) -> dict | None: ...
 
+    def update_order_status(self, ref: str, status: str) -> dict | None: ...
+
     def cancel_order(self, ref: str) -> dict | None: ...
 
 
@@ -63,12 +65,15 @@ class MemoryOrderStore:
                 return order
         return None
 
-    def cancel_order(self, ref: str) -> dict | None:
+    def update_order_status(self, ref: str, status: str) -> dict | None:
         order = self.get_order_by_ref(ref)
         if order is None:
             return None
-        order["status"] = "cancelled"
+        order["status"] = status
         return order
+
+    def cancel_order(self, ref: str) -> dict | None:
+        return self.update_order_status(ref, "cancelled")
 
     def _next_ref(self, seller_id: str) -> str:
         counter = self._ref_counters.get(seller_id, 1000) + 1
@@ -130,17 +135,17 @@ class SupabaseOrderStore:
         rows = found.data or []
         return rows[0] if rows else None
 
-    def cancel_order(self, ref: str) -> dict | None:
+    def update_order_status(self, ref: str, status: str) -> dict | None:
         order = self.get_order_by_ref(ref)
         if order is None:
             return None
         updated = (
-            self._client.table("orders")
-            .update({"status": "cancelled"})
-            .eq("id", order["id"])
-            .execute()
+            self._client.table("orders").update({"status": status}).eq("id", order["id"]).execute()
         )
         return updated.data[0]
+
+    def cancel_order(self, ref: str) -> dict | None:
+        return self.update_order_status(ref, "cancelled")
 
     def _unique_ref(self) -> str:
         for _ in range(10):

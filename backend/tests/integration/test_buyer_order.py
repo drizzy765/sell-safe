@@ -10,6 +10,7 @@ from app.config import Settings
 from app.db.catalog_store import MemoryCatalogStore
 from app.db.echo_store import MemoryEchoStore
 from app.db.orders import MemoryOrderStore
+from app.db.payments import MemoryPaymentStore
 from app.decisions.fake import FakeJev
 from app.llm.fake import FakeProvider
 from app.main import create_app
@@ -106,6 +107,7 @@ def test_buyer_asks_price_and_places_order_in_pidgin() -> None:
         jev=FakeJev(intent="price_question", language="pcm"),
         catalog=catalog,
         orders=orders,
+        payments=MemoryPaymentStore(),
     )
     client = TestClient(app)
 

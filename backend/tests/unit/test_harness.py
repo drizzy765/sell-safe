@@ -8,6 +8,7 @@ from app.channels.base import InboundMessage
 from app.db.catalog_store import MemoryCatalogStore
 from app.db.echo_store import MemoryEchoStore
 from app.db.orders import MemoryOrderStore
+from app.db.payments import MemoryPaymentStore
 from app.decisions.fake import FakeJev
 from app.llm.fake import FakeProvider
 
@@ -65,6 +66,7 @@ async def test_price_question_searches_catalog_and_replies_with_price() -> None:
         provider=provider,
         catalog_store=catalog,
         order_store=orders,
+        payment_store=MemoryPaymentStore(),
     )
 
     assert isinstance(state, State)
