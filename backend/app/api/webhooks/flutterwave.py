@@ -11,6 +11,8 @@ from app.db.echo_store import EchoStore, build_store
 from app.db.orders import OrderStore, build_order_store
 from app.db.payments import PaymentStore, build_payment_store
 from app.db.webhook_events import WebhookEventStore, build_webhook_event_store
+from app.decisions.base import JevClient
+from app.decisions.factory import build_jev
 from app.payments.flutterwave.webhook import FlutterwaveWebhookHandler, verify_flutterwave_hash
 
 router = APIRouter()
@@ -49,6 +51,14 @@ def _event_store(request: Request) -> WebhookEventStore:
     if current is None:
         current = build_webhook_event_store(request.app.state.settings)
         request.app.state.webhook_events = current
+    return current
+
+
+def _jev(request: Request) -> JevClient:
+    current = getattr(request.app.state, "jev", None)
+    if current is None:
+        current = build_jev(request.app.state.settings)
+        request.app.state.jev = current
     return current
 
 
@@ -101,6 +111,7 @@ async def flutterwave_webhook(request: Request) -> Response:
             store=_store(request),
             order_store=order_store,
             payment_store=_payment_store(request),
+            jev=_jev(request),
             pii_salt=settings.pii_salt,
         )
     except Exception:

@@ -44,4 +44,4 @@ python -m evals.run --suite payments --dataset v1 --seed <seed>
 python -m evals.run --suite conversations --dataset v1 --seed <seed> --trials 4
 ```
 
-The command is the contract. The runner is not in the tree yet. A citable run records the git SHA, dataset version, seed, model ids, and prompt version in the report header, using the system card in `docs/benchmark.md`.
+The command is the contract. CI uses `FakeProvider`. A citable run records the git SHA, dataset version, seed, model ids, and prompt version in the report header, using the system card in `docs/benchmark.md`. The payments v1 synthetic set lives under `data/synthetic/payments/v1/` and must keep false-`CONFIRMED` at zero.

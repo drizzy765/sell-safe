@@ -51,9 +51,25 @@ async def release_order(
         raise HTTPException(status_code=404, detail="order not found")
 
     payment = payment_store.get_payment_for_order(order["id"])
-    verdict = (payment or {}).get("verdict")
-    if not verdict or not verdict.get("release_allowed"):
+    verdict = (payment or {}).get("verdict") if payment else None
+    if not verdict:
+        latest = payment_store.get_latest_verdict(payment["id"]) if payment else None
+        verdict = latest
+    if not verdict or verdict.get("verdict") != "CONFIRMED":
         raise HTTPException(status_code=409, detail="release not allowed")
+
+    # Seller confirmation of a mid-band verdict sets release_allowed=true.
+    if not verdict.get("release_allowed"):
+        payment_store.save_verdict(
+            payment_id=payment["id"],
+            verdict="CONFIRMED",
+            confidence=verdict.get("confidence", 0.0),
+            release_allowed=True,
+            reasons=verdict.get("reasons", []),
+            rule_hits=verdict.get("rule_hits", []),
+            jev_scores=verdict.get("jev_scores"),
+            decided_by="seller",
+        )
 
     updated = order_store.update_order_status(ref, "released")
     return {"ok": True, "order": updated}

@@ -4,6 +4,7 @@ from typing import Any
 
 from app.agent.templates import (
     confirmed_payment,
+    hold_payment,
     not_found_payment,
     release_card,
     suspicious_payment,
@@ -12,6 +13,7 @@ from app.channels.base import ChannelAdapter, InboundMessage
 from app.db.echo_store import EchoStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
+from app.decisions.base import JevClient, RouteScores
 from app.llm.base import LLMProvider
 from app.verification.extract import AskResend, ReceiptExtraction, extract_receipt
 from app.verification.matchers import EvidenceMatch, find_matching_evidence
@@ -48,6 +50,7 @@ def _run_verdict(
     pii_salt: str,
     exclude_evidence_ids: set[str] | None = None,
     current_payment_id: str | None = None,
+    jev_scores: RouteScores | None = None,
 ) -> tuple[RulesResult, EvidenceMatch | None, Verdict]:
     rules_result = apply_rules(
         order,
@@ -61,7 +64,7 @@ def _run_verdict(
         current_payment_id=current_payment_id,
     )
     matched = find_matching_evidence(extraction, evidence_rows)
-    verdict = decide_verdict(order, extraction, rules_result, matched)
+    verdict = decide_verdict(order, extraction, rules_result, matched, jev_scores)
     return rules_result, matched, verdict
 
 
@@ -75,6 +78,7 @@ async def verify_payment_turn(
     order_store: OrderStore,
     payment_store: PaymentStore,
     provider: LLMProvider,
+    jev: JevClient | None = None,
     pii_salt: str = "",
 ) -> VerifyResult:
     """Run the payment verification branch for an image receipt."""
@@ -89,6 +93,17 @@ async def verify_payment_turn(
         await _send_resend_message(message.sender_id, channel_adapter, store, seller_id, buyer_id)
         return VerifyResult(verdict=_not_found_verdict("could_not_read_receipt"))
 
+    jev_scores = None
+    if jev is not None:
+        seller_language = store.get_seller_language(seller_id)
+        jev_scores = await jev.ask(
+            text="Assess this transfer receipt for tampering and evidence match.",
+            seller_default_language=seller_language,
+            image_extraction=extracted.model_dump(
+                exclude={"image_sha256", "image_phash", "metadata_editor"}
+            ),
+        )
+
     order = order_store.get_open_order(seller_id, buyer_id)
     if order is None:
         await _send_no_order_message(message.sender_id, channel_adapter, store, seller_id, buyer_id)
@@ -98,14 +113,21 @@ async def verify_payment_turn(
     seller_last4, seller_name = _seller_account_info(seller)
     evidence_rows = payment_store.get_evidence_for_order(order["id"])
 
-    _, _, verdict = _run_verdict(
-        order, extracted, evidence_rows, seller_last4, seller_name, pii_salt
+    rules_result, _, verdict = _run_verdict(
+        order,
+        extracted,
+        evidence_rows,
+        seller_last4,
+        seller_name,
+        pii_salt,
+        jev_scores=jev_scores,
     )
 
     _persist_evidence_and_verdict(
         payment_store,
         order,
         extracted,
+        rules_result,
         verdict,
         image_sha256=extracted.image_sha256,
         image_phash=extracted.image_phash,
@@ -133,6 +155,7 @@ async def reevaluate_order_after_webhook(
     store: EchoStore,
     order_store: OrderStore,
     payment_store: PaymentStore,
+    jev: JevClient | None = None,
     pii_salt: str = "",
 ) -> Verdict | None:
     """Re-run verdict for an order after new webhook evidence arrives.
@@ -154,7 +177,15 @@ async def reevaluate_order_after_webhook(
             return None
         seller = store.get_seller(order["seller_id"])
         seller_last4, seller_name = _seller_account_info(seller)
-        _, _, verdict = _run_verdict(
+        jev_scores = None
+        if jev is not None:
+            seller_language = store.get_seller_language(order["seller_id"])
+            jev_scores = await jev.ask(
+                text="Assess this transfer receipt for tampering and evidence match.",
+                seller_default_language=seller_language,
+                image_extraction=extracted_data,
+            )
+        rules_result, _, verdict = _run_verdict(
             order,
             extraction,
             evidence_rows,
@@ -163,10 +194,12 @@ async def reevaluate_order_after_webhook(
             pii_salt,
             exclude_evidence_ids={source_row.get("id")} if source_row.get("id") else None,
             current_payment_id=source_row.get("payment_id"),
+            jev_scores=jev_scores,
         )
     else:
         # Webhook-only: level-4 evidence alone is treated as CONFIRMED.
-        webhook_rows = [r for r in evidence_rows if r.get("type") == "va_webhook"]
+        # Level-2 bank alerts are also considered if no screenshot exists.
+        webhook_rows = [r for r in evidence_rows if r.get("type") in ("va_webhook", "bank_alert")]
         if not webhook_rows:
             return None
         best = max(webhook_rows, key=lambda r: int(r.get("trust_level") or 0))
@@ -175,7 +208,15 @@ async def reevaluate_order_after_webhook(
             extraction = ReceiptExtraction.model_validate(extracted_data)
         except Exception:
             return None
-        _, _, verdict = _run_verdict(
+        jev_scores = None
+        if jev is not None:
+            seller_language = store.get_seller_language(order["seller_id"])
+            jev_scores = await jev.ask(
+                text="Assess this transfer receipt for tampering and evidence match.",
+                seller_default_language=seller_language,
+                image_extraction=extracted_data,
+            )
+        rules_result, _, verdict = _run_verdict(
             order,
             extraction,
             evidence_rows,
@@ -184,11 +225,21 @@ async def reevaluate_order_after_webhook(
             pii_salt,
             exclude_evidence_ids={best.get("id")} if best.get("id") else None,
             current_payment_id=best.get("payment_id"),
+            jev_scores=jev_scores,
         )
 
     payment = payment_store.get_payment_for_order(order["id"])
     if payment:
-        payment["verdict"] = verdict.model_dump()
+        payment_store.save_verdict(
+            payment_id=payment["id"],
+            verdict=verdict.verdict,
+            confidence=verdict.confidence,
+            release_allowed=verdict.release_allowed,
+            reasons=verdict.reasons,
+            rule_hits=rules_result.rule_hits,
+            jev_scores=verdict.jev_scores,
+            decided_by="auto",
+        )
 
     if verdict.verdict == "CONFIRMED" and verdict.release_allowed:
         order_store.update_order_status(order["ref"], "paid")
@@ -200,6 +251,7 @@ def _persist_evidence_and_verdict(
     payment_store: PaymentStore,
     order: dict[str, Any],
     extraction: ReceiptExtraction,
+    rules_result: RulesResult,
     verdict: Verdict,
     image_sha256: str,
     image_phash: str,
@@ -218,8 +270,16 @@ def _persist_evidence_and_verdict(
         image_sha256=image_sha256,
         image_phash=image_phash,
     )
-    # Verdict persistence is intentionally a simple dict in-memory for Phase 4.
-    payment["verdict"] = verdict.model_dump()
+    payment_store.save_verdict(
+        payment_id=payment["id"],
+        verdict=verdict.verdict,
+        confidence=verdict.confidence,
+        release_allowed=verdict.release_allowed,
+        reasons=verdict.reasons,
+        rule_hits=rules_result.rule_hits,
+        jev_scores=verdict.jev_scores,
+        decided_by="auto",
+    )
 
 
 def _not_found_verdict(reason: str) -> Verdict:
@@ -297,8 +357,10 @@ async def _send_verdict_messages(
     total_kobo = int(order.get("total_kobo") or 0)
     ref = str(order.get("ref") or "")
 
-    if verdict.verdict == "CONFIRMED":
+    if verdict.verdict == "CONFIRMED" and verdict.release_allowed:
         buyer_text = confirmed_payment(total_kobo, None, ref)
+    elif verdict.verdict == "CONFIRMED" and not verdict.release_allowed:
+        buyer_text = hold_payment(total_kobo, ref)
     elif verdict.verdict == "SUSPICIOUS":
         buyer_text = suspicious_payment(verdict.reasons)
     else:
@@ -313,7 +375,7 @@ async def _send_verdict_messages(
         text=buyer_text,
     )
 
-    seller_text = release_card(ref, verdict.verdict)
+    seller_text = release_card(ref, verdict.verdict, verdict.release_allowed)
     store.save_outbound(
         seller_id=seller_id,
         buyer_id=buyer_id,

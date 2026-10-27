@@ -23,6 +23,10 @@ class OrderStore(Protocol):
 
     def cancel_order(self, ref: str) -> dict | None: ...
 
+    def increment_reminder_count(self, ref: str) -> dict | None: ...
+
+    def list_pending_payment_orders(self) -> list[dict]: ...
+
 
 class MemoryOrderStore:
     def __init__(self) -> None:
@@ -55,6 +59,8 @@ class MemoryOrderStore:
             "items": items,
             "total_kobo": total_kobo,
             "status": "awaiting_payment",
+            "reminder_count": 0,
+            "expires_at": None,
         }
         self.orders.append(order)
         return order
@@ -74,6 +80,20 @@ class MemoryOrderStore:
 
     def cancel_order(self, ref: str) -> dict | None:
         return self.update_order_status(ref, "cancelled")
+
+    def increment_reminder_count(self, ref: str) -> dict | None:
+        order = self.get_order_by_ref(ref)
+        if order is None:
+            return None
+        order["reminder_count"] = int(order.get("reminder_count", 0)) + 1
+        return order
+
+    def list_pending_payment_orders(self) -> list[dict]:
+        return [
+            order
+            for order in self.orders
+            if order.get("status") in ("awaiting_payment", "payment_review")
+        ]
 
     def _next_ref(self, seller_id: str) -> str:
         counter = self._ref_counters.get(seller_id, 1000) + 1
@@ -146,6 +166,27 @@ class SupabaseOrderStore:
 
     def cancel_order(self, ref: str) -> dict | None:
         return self.update_order_status(ref, "cancelled")
+
+    def increment_reminder_count(self, ref: str) -> dict | None:
+        order = self.get_order_by_ref(ref)
+        if order is None:
+            return None
+        updated = (
+            self._client.table("orders")
+            .update({"reminder_count": int(order.get("reminder_count") or 0) + 1})
+            .eq("id", order["id"])
+            .execute()
+        )
+        return updated.data[0]
+
+    def list_pending_payment_orders(self) -> list[dict]:
+        found = (
+            self._client.table("orders")
+            .select("*")
+            .in_("status", ["awaiting_payment", "payment_review"])
+            .execute()
+        )
+        return found.data or []
 
     def _unique_ref(self) -> str:
         for _ in range(10):

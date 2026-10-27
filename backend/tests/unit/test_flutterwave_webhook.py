@@ -8,6 +8,7 @@ from app.db.echo_store import MemoryEchoStore
 from app.db.orders import MemoryOrderStore
 from app.db.payments import MemoryPaymentStore
 from app.db.webhook_events import MemoryWebhookEventStore
+from app.decisions.fake import FakeJev
 from app.main import create_app
 
 SECRET = "test-flutterwave-secret"
@@ -74,7 +75,18 @@ async def test_matching_event_confirms_through_verdict_engine() -> None:
     payments = MemoryPaymentStore()
     events = MemoryWebhookEventStore()
 
-    app = create_app(_settings(), store=store, orders=orders, payments=payments)
+    app = create_app(
+        _settings(),
+        store=store,
+        orders=orders,
+        payments=payments,
+        jev=FakeJev(
+            intent="payment_proof",
+            language="en",
+            evidence_match=1.0,
+            receipt_tampered=0.0,
+        ),
+    )
     app.state.webhook_events = events
     client = TestClient(app)
 
@@ -108,7 +120,18 @@ async def test_duplicate_delivery_stored_once() -> None:
     payments = MemoryPaymentStore()
     events = MemoryWebhookEventStore()
 
-    app = create_app(_settings(), store=store, orders=orders, payments=payments)
+    app = create_app(
+        _settings(),
+        store=store,
+        orders=orders,
+        payments=payments,
+        jev=FakeJev(
+            intent="payment_proof",
+            language="en",
+            evidence_match=1.0,
+            receipt_tampered=0.0,
+        ),
+    )
     app.state.webhook_events = events
     client = TestClient(app)
 

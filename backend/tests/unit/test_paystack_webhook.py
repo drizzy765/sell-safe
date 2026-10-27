@@ -10,6 +10,7 @@ from app.config import Settings
 from app.db.orders import MemoryOrderStore
 from app.db.payments import MemoryPaymentStore
 from app.db.webhook_events import MemoryWebhookEventStore
+from app.decisions.fake import FakeJev
 from app.main import create_app
 
 SECRET = "test-paystack-secret"
@@ -58,6 +59,12 @@ def _app(
     )
     app.state.payments = payments
     app.state.webhook_events = events
+    app.state.jev = FakeJev(
+        intent="payment_proof",
+        language="en",
+        evidence_match=1.0,
+        receipt_tampered=0.0,
+    )
     return app
 
 

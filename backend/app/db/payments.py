@@ -30,11 +30,27 @@ class PaymentStore(Protocol):
 
     def get_payment_for_order(self, order_id: str) -> dict | None: ...
 
+    def save_verdict(
+        self,
+        *,
+        payment_id: str,
+        verdict: str,
+        confidence: float,
+        release_allowed: bool,
+        reasons: list[str],
+        rule_hits: list[str],
+        jev_scores: dict[str, float] | None = None,
+        decided_by: str = "auto",
+    ) -> dict: ...
+
+    def get_latest_verdict(self, payment_id: str) -> dict | None: ...
+
 
 class MemoryPaymentStore:
     def __init__(self) -> None:
         self.payments: list[dict] = []
         self.evidence: list[dict] = []
+        self.verdicts: list[dict] = []
 
     def get_or_create_payment(
         self,
@@ -93,6 +109,42 @@ class MemoryPaymentStore:
             if payment["order_id"] == order_id:
                 return payment
         return None
+
+    def save_verdict(
+        self,
+        *,
+        payment_id: str,
+        verdict: str,
+        confidence: float,
+        release_allowed: bool,
+        reasons: list[str],
+        rule_hits: list[str],
+        jev_scores: dict[str, float] | None = None,
+        decided_by: str = "auto",
+    ) -> dict:
+        row = {
+            "id": str(uuid4()),
+            "payment_id": payment_id,
+            "verdict": verdict,
+            "confidence": confidence,
+            "release_allowed": release_allowed,
+            "reasons": reasons,
+            "rule_hits": rule_hits,
+            "jev_scores": jev_scores,
+            "decided_by": decided_by,
+        }
+        self.verdicts.append(row)
+        # Keep the latest verdict on the payment dict for backward compatibility.
+        payment = next((p for p in self.payments if p["id"] == payment_id), None)
+        if payment is not None:
+            payment["verdict"] = row
+        return row
+
+    def get_latest_verdict(self, payment_id: str) -> dict | None:
+        rows = [v for v in self.verdicts if v["payment_id"] == payment_id]
+        if not rows:
+            return None
+        return rows[-1]
 
 
 class SupabasePaymentStore:
@@ -173,6 +225,44 @@ class SupabasePaymentStore:
     def get_payment_for_order(self, order_id: str) -> dict | None:
         found = (
             self._client.table("payments").select("*").eq("order_id", order_id).limit(1).execute()
+        )
+        rows = found.data or []
+        return rows[0] if rows else None
+
+    def save_verdict(
+        self,
+        *,
+        payment_id: str,
+        verdict: str,
+        confidence: float,
+        release_allowed: bool,
+        reasons: list[str],
+        rule_hits: list[str],
+        jev_scores: dict[str, float] | None = None,
+        decided_by: str = "auto",
+    ) -> dict:
+        payload: dict = {
+            "payment_id": payment_id,
+            "verdict": verdict,
+            "confidence": confidence,
+            "release_allowed": release_allowed,
+            "reasons": reasons,
+            "rule_hits": rule_hits,
+            "decided_by": decided_by,
+        }
+        if jev_scores is not None:
+            payload["jev_scores"] = jev_scores
+        created = self._client.table("verdicts").insert(payload).execute()
+        return created.data[0]
+
+    def get_latest_verdict(self, payment_id: str) -> dict | None:
+        found = (
+            self._client.table("verdicts")
+            .select("*")
+            .eq("payment_id", payment_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
         )
         rows = found.data or []
         return rows[0] if rows else None

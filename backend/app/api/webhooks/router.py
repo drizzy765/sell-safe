@@ -10,6 +10,7 @@ from app.agent.graph.harness import run_turn
 from app.agent.graph.verify import verify_payment_turn
 from app.agent.listing import handle_price_reply, handle_product_photo
 from app.agent.voice import handle_voice_note
+from app.api.webhooks.alerts import router as alerts_router
 from app.api.webhooks.flutterwave import router as flutterwave_router
 from app.api.webhooks.paystack import router as paystack_router
 from app.channels.whatsapp.adapter import WhatsAppAdapter
@@ -168,6 +169,7 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
                     order_store=_orders(request),
                     payment_store=_payments(request),
                     provider=_provider(request),
+                    jev=_jev(request),
                 )
             else:
                 background.add_task(
@@ -229,3 +231,4 @@ async def whatsapp_webhook(request: Request, background: BackgroundTasks) -> Res
 
 router.include_router(paystack_router)
 router.include_router(flutterwave_router)
+router.include_router(alerts_router)

@@ -20,6 +20,12 @@ class EchoStore(Protocol):
 
     def get_seller_language(self, seller_id: str) -> str: ...
 
+    def get_seller_by_channel(
+        self,
+        channel: str,
+        external_id: str,
+    ) -> dict | None: ...
+
     def save_inbound(
         self,
         *,
@@ -54,6 +60,8 @@ class EchoStore(Protocol):
 
     def get_seller(self, seller_id: str) -> dict | None: ...
 
+    def get_buyer_by_id(self, buyer_id: str) -> dict | None: ...
+
 
 class MemoryEchoStore:
     """In-memory store for tests. A repeated external_msg_id returns False."""
@@ -62,7 +70,9 @@ class MemoryEchoStore:
         self.sellers: dict[str, str] = {}
         self.seller_languages: dict[str, str] = {"default": "en"}
         self.seller_details: dict[str, dict] = {}
+        self.seller_channels: dict[tuple[str, str], str] = {}
         self.buyers: dict[tuple[str, str], str] = {}
+        self.buyer_by_id: dict[str, dict[str, str]] = {}
         self.messages: dict[str, dict[str, str | float | None]] = {}
 
     def ensure_seller(self, phone_number_id: str) -> str:
@@ -75,7 +85,26 @@ class MemoryEchoStore:
                 "business_name": "Shop",
                 "virtual_account": {"last4": "1234", "bank": "Test Bank"},
             }
+            self.seller_channels[("whatsapp", phone_number_id)] = seller_id
         return self.sellers[phone_number_id]
+
+    def register_channel(
+        self,
+        seller_id: str,
+        channel: str,
+        external_id: str,
+    ) -> None:
+        self.seller_channels[(channel, external_id)] = seller_id
+
+    def get_seller_by_channel(
+        self,
+        channel: str,
+        external_id: str,
+    ) -> dict | None:
+        seller_id = self.seller_channels.get((channel, external_id))
+        if seller_id is None:
+            return None
+        return self.seller_details.get(seller_id)
 
     def ensure_buyer(
         self,
@@ -85,7 +114,13 @@ class MemoryEchoStore:
     ) -> str:
         key = (channel, external_id)
         if key not in self.buyers:
-            self.buyers[key] = str(uuid4())
+            buyer_id = str(uuid4())
+            self.buyers[key] = buyer_id
+            self.buyer_by_id[buyer_id] = {
+                "id": buyer_id,
+                "channel": channel,
+                "external_id": external_id,
+            }
         return self.buyers[key]
 
     def get_seller_language(self, seller_id: str) -> str:
@@ -158,6 +193,9 @@ class MemoryEchoStore:
     def get_seller(self, seller_id: str) -> dict | None:
         return self.seller_details.get(seller_id)
 
+    def get_buyer_by_id(self, buyer_id: str) -> dict | None:
+        return self.buyer_by_id.get(buyer_id)
+
 
 def _is_duplicate(exc: BaseException) -> bool:
     code = getattr(exc, "code", None)
@@ -229,6 +267,21 @@ class SupabaseEchoStore:
         if rows:
             return str(rows[0].get("default_language") or "en")
         return "en"
+
+    def get_seller_by_channel(
+        self,
+        channel: str,
+        external_id: str,
+    ) -> dict | None:
+        found = (
+            self._client.table("sellers")
+            .select("id, business_name, virtual_account")
+            .contains("channel_ids", {channel: external_id})
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        return rows[0] if rows else None
 
     def save_inbound(
         self,
@@ -308,6 +361,17 @@ class SupabaseEchoStore:
             self._client.table("sellers")
             .select("id, business_name, virtual_account")
             .eq("id", seller_id)
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        return rows[0] if rows else None
+
+    def get_buyer_by_id(self, buyer_id: str) -> dict | None:
+        found = (
+            self._client.table("buyers")
+            .select("id, channel, external_id")
+            .eq("id", buyer_id)
             .limit(1)
             .execute()
         )

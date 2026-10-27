@@ -1,0 +1,33 @@
+-- GTB credit alert
+GTBank
+Acct: ****1234 has been credited with NGN5,000.00
+Desc: Transfer from John Doe
+Ref: GTB-ABC123
+Date: 27-Oct-2026 14:30 WAT
+Bal: NGN25,000.00
+--
+-- Access Bank credit alert
+Access Bank
+Credit Alert
+Amt: N10,000.00
+Acc: ****5678
+Desc: Transfer from Jane Smith
+Ref: ACC-XYZ789
+Time: 27 Oct 2026 15:45
+Bal: N50,000.00
+--
+-- OPay credit alert
+OPay
+You have received NGN 1,500.00 into your OPay account ****9012.
+From: Mike Brown.
+Ref: OPY-999888.
+Time: 2026-10-27 16:00.
+Balance: NGN 15,000.00
+--
+-- GTB debit alert (should be rejected as evidence)
+GTBank
+Acct: ****1234 has been debited with NGN2,500.00
+Desc: Transfer to Akin
+Ref: GTB-DEBIT-1
+Date: 27-Oct-2026 14:35 WAT
+Bal: NGN22,500.00

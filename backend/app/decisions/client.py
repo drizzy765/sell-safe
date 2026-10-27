@@ -51,6 +51,18 @@ class TypeSafeClient:
                 "type": "choice",
                 "options": IMAGE_KINDS,
             },
+            {
+                "id": "receipt_tampered",
+                "type": "score",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "id": "evidence_match",
+                "type": "score",
+                "min": 0.0,
+                "max": 1.0,
+            },
         ]
 
     async def ask(
@@ -109,6 +121,8 @@ class TypeSafeClient:
             if image_kind_scores
             else None,
             image_kind_scores=image_kind_scores or None,
+            receipt_tampered=float(answers.get("receipt_tampered", 0.0) or 0.0),
+            evidence_match=float(answers.get("evidence_match", 0.0) or 0.0),
         )
 
     def _scores(self, value: Any) -> dict[str, float]:
