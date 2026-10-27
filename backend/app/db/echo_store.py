@@ -9,7 +9,7 @@ from uuid import uuid4
 
 
 class EchoStore(Protocol):
-    def ensure_seller(self, phone_number_id: str) -> str: ...
+    def ensure_seller(self, phone_number_id: str, *, channel: str = "whatsapp") -> str: ...
 
     def ensure_buyer(
         self,
@@ -75,7 +75,7 @@ class MemoryEchoStore:
         self.buyer_by_id: dict[str, dict[str, str]] = {}
         self.messages: dict[str, dict[str, str | float | None]] = {}
 
-    def ensure_seller(self, phone_number_id: str) -> str:
+    def ensure_seller(self, phone_number_id: str, *, channel: str = "whatsapp") -> str:
         if phone_number_id not in self.sellers:
             seller_id = str(uuid4())
             self.sellers[phone_number_id] = seller_id
@@ -85,8 +85,9 @@ class MemoryEchoStore:
                 "business_name": "Shop",
                 "virtual_account": {"last4": "1234", "bank": "Test Bank"},
             }
-            self.seller_channels[("whatsapp", phone_number_id)] = seller_id
-        return self.sellers[phone_number_id]
+        seller_id = self.sellers[phone_number_id]
+        self.seller_channels[(channel, phone_number_id)] = seller_id
+        return seller_id
 
     def register_channel(
         self,
@@ -141,6 +142,15 @@ class MemoryEchoStore:
         asr_confidence: float | None = None,
     ) -> bool:
         if external_msg_id in self.messages:
+            # Voice path re-saves ASR fields onto the original audio row.
+            if transcript is not None:
+                existing = self.messages[external_msg_id]
+                existing["transcript"] = transcript
+                existing["language"] = language
+                existing["asr_confidence"] = asr_confidence
+                if text is not None:
+                    existing["text"] = text
+                return True
             return False
         self.messages[external_msg_id] = {
             "seller_id": seller_id,
@@ -206,11 +216,11 @@ class SupabaseEchoStore:
     def __init__(self, client: object) -> None:
         self._client = client
 
-    def ensure_seller(self, phone_number_id: str) -> str:
+    def ensure_seller(self, phone_number_id: str, *, channel: str = "whatsapp") -> str:
         found = (
             self._client.table("sellers")
             .select("id")
-            .contains("channel_ids", {"whatsapp": phone_number_id})
+            .contains("channel_ids", {channel: phone_number_id})
             .limit(1)
             .execute()
         )
@@ -223,7 +233,7 @@ class SupabaseEchoStore:
                 {
                     "name": "Shop",
                     "business_name": "Shop",
-                    "channel_ids": {"whatsapp": phone_number_id},
+                    "channel_ids": {channel: phone_number_id},
                     "default_language": "en",
                     "active": True,
                 }
@@ -314,6 +324,16 @@ class SupabaseEchoStore:
             self._client.table("messages").insert(row).execute()
         except Exception as exc:
             if _is_duplicate(exc):
+                if transcript is not None:
+                    self._client.table("messages").update(
+                        {
+                            "transcript": transcript,
+                            "language": language,
+                            "asr_confidence": asr_confidence,
+                            **({"text": text} if text is not None else {}),
+                        }
+                    ).eq("external_msg_id", external_msg_id).execute()
+                    return True
                 return False
             raise
         return True

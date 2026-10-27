@@ -27,18 +27,32 @@ async def handle_voice_note(
 ) -> None:
     if not message.media_id:
         return
+
+    language = store.get_seller_language(seller_id)
     try:
+        # Never log audio bytes.
         audio = await adapter.fetch_media(message.media_id)
         result = await speech.transcribe(audio, language_hint=None)
     except Exception:
-        language = store.get_seller_language(seller_id)
         await adapter.send_text(message.sender_id, fallback_ask_type(language))
         return
 
-    if not result.text:
-        language = store.get_seller_language(seller_id)
+    transcript = (result.text or "").strip()
+    if not transcript:
         await adapter.send_text(message.sender_id, fallback_ask_type(language))
         return
+
+    store.save_inbound(
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        channel=message.channel,
+        external_msg_id=message.external_id,
+        message_type=message.type,
+        text=transcript,
+        language=result.language,
+        transcript=transcript,
+        asr_confidence=result.confidence,
+    )
 
     text_message = InboundMessage(
         channel=message.channel,
@@ -46,7 +60,7 @@ async def handle_voice_note(
         sender_id=message.sender_id,
         seller_id=message.seller_id,
         type="text",
-        text=result.text,
+        text=transcript,
         ts=message.ts,
     )
     await run_turn(
