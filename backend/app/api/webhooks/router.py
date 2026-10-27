@@ -18,6 +18,7 @@ from app.channels.instagram.adapter import InstagramAdapter
 from app.channels.whatsapp.adapter import WhatsAppAdapter
 from app.db.catalog_store import CatalogStore, build_catalog_store
 from app.db.echo_store import EchoStore, build_store
+from app.db.fraud_store import FraudStore, MemoryFraudStore, build_fraud_store
 from app.db.orders import OrderStore, build_order_store
 from app.db.payments import PaymentStore, build_payment_store
 from app.db.storage import ObjectStorage, build_storage
@@ -103,6 +104,18 @@ def _speech(request: Request) -> SpeechClient:
     return current
 
 
+def _fraud(request: Request) -> FraudStore:
+    current = getattr(request.app.state, "fraud", None)
+    if current is None:
+        settings = request.app.state.settings
+        if settings.supabase_url and settings.supabase_service_role_key:
+            current = build_fraud_store(settings)
+        else:
+            current = MemoryFraudStore()
+        request.app.state.fraud = current
+    return current
+
+
 def _tokens_match(token: str | None, expected: str) -> bool:
     if not token or not expected:
         return False
@@ -164,6 +177,8 @@ def _dispatch_inbound(
                 payment_store=_payments(request),
                 provider=_provider(request),
                 jev=_jev(request),
+                pii_salt=settings.pii_salt,
+                fraud_store=_fraud(request),
             )
         else:
             background.add_task(
@@ -219,6 +234,8 @@ def _dispatch_inbound(
                 catalog_store=_catalog(request),
                 order_store=_orders(request),
                 payment_store=_payments(request),
+                fraud_store=_fraud(request),
+                pii_salt=settings.pii_salt,
             )
 
 

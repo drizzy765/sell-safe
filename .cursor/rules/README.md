@@ -1,3 +1,3 @@
 # .cursor/rules
 
-Agent rules as markdown: harness.md, security.md, conventions.md.
+Agent rules as markdown: harness.md, security.md, conventions.md, tooling.md.

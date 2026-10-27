@@ -4,11 +4,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.api.internal.jobs import router as internal_jobs_router
+from app.api.internal.jobs import sellers_router as internal_sellers_router
 from app.api.internal.orders import router as internal_orders_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
+from app.db.fraud_store import FraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
 from app.db.storage import ObjectStorage
@@ -33,6 +35,7 @@ def create_app(
     orders: OrderStore | None = None,
     payments: PaymentStore | None = None,
     speech: SpeechClient | None = None,
+    fraud: FraudStore | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
@@ -47,6 +50,7 @@ def create_app(
     app.state.orders = orders
     app.state.payments = payments
     app.state.speech = speech
+    app.state.fraud = fraud
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -55,6 +59,7 @@ def create_app(
     app.include_router(webhooks_router)
     app.include_router(internal_orders_router)
     app.include_router(internal_jobs_router)
+    app.include_router(internal_sellers_router)
     return app
 
 

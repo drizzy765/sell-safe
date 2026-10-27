@@ -67,6 +67,7 @@ def apply_rules(
     seller_account_last4: str | None = None,
     seller_name: str | None = None,
     pii_salt: str = "",
+    buyer_phone_hash: str | None = None,
     exclude_evidence_ids: set[str] | None = None,
     current_payment_id: str | None = None,
 ) -> RulesResult:
@@ -129,17 +130,16 @@ def apply_rules(
                 risk += _WEIGHTS["R5_duplicate_image"]
                 break
 
-    # R6 blocklist
+    # R6 blocklist — match confirmed signals against hashed extraction fields.
     if fraud_signals:
         sender_name_hashed = (
             _hash_value(extraction.sender_name, pii_salt) if extraction.sender_name else None
         )
-        sender_bank_hashed = (
-            _hash_value(extraction.sender_bank, pii_salt) if extraction.sender_bank else None
-        )
-        reference_hashed = (
-            _hash_value(extraction.reference, pii_salt) if extraction.reference else None
-        )
+        sender_acct = getattr(extraction, "sender_acct_last4", None)
+        account_raw = sender_acct if isinstance(sender_acct, str) and sender_acct else None
+        if not account_raw:
+            account_raw = extraction.sender_bank
+        account_hashed = _hash_value(account_raw, pii_salt) if account_raw else None
         image_sha256_hashed = (
             _hash_value(extraction.image_sha256, pii_salt) if extraction.image_sha256 else None
         )
@@ -152,11 +152,11 @@ def apply_rules(
                 hits.append("R6_blocklist")
                 risk += _WEIGHTS["R6_blocklist"]
                 break
-            if kind == "account_number" and sender_bank_hashed and value == sender_bank_hashed:
+            if kind == "account_number" and account_hashed and value == account_hashed:
                 hits.append("R6_blocklist")
                 risk += _WEIGHTS["R6_blocklist"]
                 break
-            if kind == "phone" and reference_hashed and value == reference_hashed:
+            if kind == "phone" and buyer_phone_hash and value == buyer_phone_hash:
                 hits.append("R6_blocklist")
                 risk += _WEIGHTS["R6_blocklist"]
                 break

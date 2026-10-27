@@ -6,9 +6,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.agent.graph.verify import reevaluate_order_after_webhook
-from app.agent.templates import buyer_reminder, order_cancelled, order_released
+from app.agent.templates import order_cancelled, order_released
 from app.channels.base import ChannelAdapter
 from app.db.echo_store import EchoStore
+from app.db.fraud_store import FraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
 from app.decisions.base import JevClient
@@ -30,6 +31,7 @@ class RecheckService:
         channel_adapter: ChannelAdapter,
         jev: JevClient | None = None,
         pii_salt: str = "",
+        fraud_store: FraudStore | None = None,
     ) -> None:
         self._store = store
         self._order_store = order_store
@@ -37,6 +39,7 @@ class RecheckService:
         self._channel_adapter = channel_adapter
         self._jev = jev
         self._pii_salt = pii_salt
+        self._fraud_store = fraud_store
 
     async def recheck(self, now: datetime | None = None) -> list[dict[str, Any]]:
         """Run one recheck pass and return a log of actions."""
@@ -72,6 +75,7 @@ class RecheckService:
                     payment_store=self._payment_store,
                     jev=self._jev,
                     pii_salt=self._pii_salt,
+                    fraud_store=self._fraud_store,
                 )
                 if new_verdict and new_verdict.release_allowed:
                     self._order_store.update_order_status(ref, "paid")
@@ -79,15 +83,13 @@ class RecheckService:
                     actions.append({"ref": ref, "action": "confirmed_by_recheck"})
                 continue
 
-            # Outside the recheck window.
+            # Outside the recheck window: reminders are owned by /jobs/reminders.
+            # Cancel only after the buyer has already received the max reminders.
             reminder_count = int(order.get("reminder_count") or 0)
             if reminder_count < MAX_REMINDERS:
-                self._order_store.increment_reminder_count(ref)
-                await self._notify_buyer(
-                    order,
-                    buyer_reminder(ref, int(order.get("total_kobo") or 0)),
+                actions.append(
+                    {"ref": ref, "action": "awaiting_reminders", "count": reminder_count}
                 )
-                actions.append({"ref": ref, "action": "reminder", "count": reminder_count + 1})
                 continue
 
             self._order_store.update_order_status(ref, "cancelled")

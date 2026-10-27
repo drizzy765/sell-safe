@@ -9,6 +9,7 @@ from app.agent.tools.orders import OrderTools
 from app.channels.base import ChannelAdapter, InboundMessage
 from app.db.catalog_store import CatalogStore
 from app.db.echo_store import EchoStore
+from app.db.fraud_store import FraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
 from app.decisions.base import JevClient
@@ -27,6 +28,8 @@ async def run_turn(
     catalog_store: CatalogStore,
     order_store: OrderStore,
     payment_store: PaymentStore | None = None,
+    fraud_store: FraudStore | None = None,
+    pii_salt: str = "",
     business_name: str | None = None,
 ) -> State:
     """Run one inbound turn through the agent graph."""
@@ -62,6 +65,8 @@ async def run_turn(
                 payment_store=payment_store,
                 provider=provider,
                 jev=jev,
+                pii_salt=pii_salt,
+                fraud_store=fraud_store,
             )
             state.reply = verify_result.verdict.verdict
             state.verdict = verify_result.verdict.model_dump()
@@ -80,6 +85,8 @@ async def run_turn(
                 store=store,
                 order_store=order_store,
                 payment_store=payment_store,
+                fraud_store=fraud_store,
+                pii_salt=pii_salt,
             )
     elif state.intent == "order_status":
         state.reply = fallback_for_language(state.language, "order_status")
