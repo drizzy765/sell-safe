@@ -16,12 +16,12 @@ from app.api.webhooks.paystack import router as paystack_router
 from app.channels.base import ChannelAdapter, InboundMessage
 from app.channels.instagram.adapter import InstagramAdapter
 from app.channels.whatsapp.adapter import WhatsAppAdapter
-from app.db.catalog_store import CatalogStore, build_catalog_store
-from app.db.echo_store import EchoStore, build_store
+from app.db.catalog_store import CatalogStore, MemoryCatalogStore, build_catalog_store
+from app.db.echo_store import EchoStore, MemoryEchoStore, build_store
 from app.db.fraud_store import FraudStore, MemoryFraudStore, build_fraud_store
-from app.db.orders import OrderStore, build_order_store
-from app.db.payments import PaymentStore, build_payment_store
-from app.db.storage import ObjectStorage, build_storage
+from app.db.orders import MemoryOrderStore, OrderStore, build_order_store
+from app.db.payments import MemoryPaymentStore, PaymentStore, build_payment_store
+from app.db.storage import MemoryStorage, ObjectStorage, build_storage
 from app.decisions.base import JevClient
 from app.decisions.factory import build_jev
 from app.llm.base import LLMProvider
@@ -32,10 +32,20 @@ from app.speech.factory import build_speech
 router = APIRouter()
 
 
+def _supabase_ready(settings: object) -> bool:
+    return bool(
+        getattr(settings, "supabase_url", "") and getattr(settings, "supabase_service_role_key", "")
+    )
+
+
 def _store(request: Request) -> EchoStore:
     current = request.app.state.store
     if current is None:
-        current = build_store(request.app.state.settings)
+        settings = request.app.state.settings
+        if _supabase_ready(settings):
+            current = build_store(settings)
+        else:
+            current = MemoryEchoStore()
         request.app.state.store = current
     return current
 
@@ -59,7 +69,11 @@ def _provider(request: Request) -> LLMProvider:
 def _catalog(request: Request) -> CatalogStore:
     current = request.app.state.catalog
     if current is None:
-        current = build_catalog_store(request.app.state.settings)
+        settings = request.app.state.settings
+        if _supabase_ready(settings):
+            current = build_catalog_store(settings)
+        else:
+            current = MemoryCatalogStore()
         request.app.state.catalog = current
     return current
 
@@ -67,7 +81,12 @@ def _catalog(request: Request) -> CatalogStore:
 def _storage(request: Request) -> ObjectStorage:
     current = request.app.state.storage
     if current is None:
-        current = build_storage(request.app.state.settings)
+        settings = request.app.state.settings
+        bucket = getattr(settings, "supabase_storage_bucket", "")
+        if _supabase_ready(settings) and bucket:
+            current = build_storage(settings)
+        else:
+            current = MemoryStorage()
         request.app.state.storage = current
     return current
 
@@ -83,7 +102,11 @@ def _jev(request: Request) -> JevClient:
 def _orders(request: Request) -> OrderStore:
     current = request.app.state.orders
     if current is None:
-        current = build_order_store(request.app.state.settings)
+        settings = request.app.state.settings
+        if _supabase_ready(settings):
+            current = build_order_store(settings)
+        else:
+            current = MemoryOrderStore()
         request.app.state.orders = current
     return current
 
@@ -91,7 +114,11 @@ def _orders(request: Request) -> OrderStore:
 def _payments(request: Request) -> PaymentStore:
     current = getattr(request.app.state, "payments", None)
     if current is None:
-        current = build_payment_store(request.app.state.settings)
+        settings = request.app.state.settings
+        if _supabase_ready(settings):
+            current = build_payment_store(settings)
+        else:
+            current = MemoryPaymentStore()
         request.app.state.payments = current
     return current
 
@@ -126,8 +153,7 @@ def _tokens_match(token: str | None, expected: str) -> bool:
     return hmac.compare_digest(token_b, expected_b)
 
 
-@router.get("/webhooks/meta")
-def meta_verify(request: Request) -> Response:
+def _handshake(request: Request) -> Response:
     settings = request.app.state.settings
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
@@ -139,6 +165,16 @@ def meta_verify(request: Request) -> Response:
     ):
         return PlainTextResponse(challenge)
     return Response(status_code=403)
+
+
+@router.get("/webhooks/meta")
+def meta_verify(request: Request) -> Response:
+    return _handshake(request)
+
+
+@router.get("/webhooks/instagram")
+def instagram_verify(request: Request) -> Response:
+    return _handshake(request)
 
 
 def _dispatch_inbound(

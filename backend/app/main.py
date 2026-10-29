@@ -1,6 +1,7 @@
 """FastAPI application. Webhook routes and /health."""
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.api.internal.jobs import router as internal_jobs_router
@@ -56,11 +57,29 @@ def create_app(
     def health() -> HealthResponse:
         return HealthResponse(status="ok", provider=resolved.llm_provider)
 
+    @app.get("/privacy", response_class=HTMLResponse)
+    def privacy() -> str:
+        return _PRIVACY_HTML
+
     app.include_router(webhooks_router)
     app.include_router(internal_orders_router)
     app.include_router(internal_jobs_router)
     app.include_router(internal_sellers_router)
     return app
 
+
+_PRIVACY_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sell-Safe privacy</title></head>
+<body>
+<h1>Sell-Safe privacy</h1>
+<p>Sell-Safe is a shop assistant. When someone messages the shop on Instagram,
+Sell-Safe receives that message so it can answer questions about products and orders.</p>
+<p>The message text, the sender id Instagram provides, and the time of the message
+are used to run the shop conversation. Sell-Safe does not sell this information.</p>
+<p>To stop, stop messaging the shop. Questions go to the Instagram account sellsafe000.</p>
+</body>
+</html>
+"""
 
 app = create_app()

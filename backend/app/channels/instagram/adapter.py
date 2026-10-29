@@ -15,6 +15,7 @@ from app.channels.base import InboundMessage
 from app.config import Settings
 
 _GRAPH_HOST = "https://graph.facebook.com"
+_IG_LOGIN_HOST = "https://graph.instagram.com"
 
 
 def _header(headers: object, name: str) -> str:
@@ -41,7 +42,7 @@ class InstagramAdapter:
         self._transport = transport
 
     def verify_signature(self, raw: bytes, headers: object) -> bool:
-        secret = self._settings.meta_app_secret
+        secret = self._settings.instagram_app_secret or self._settings.meta_app_secret
         if not secret:
             return False
         provided = _header(headers, "X-Hub-Signature-256")
@@ -73,15 +74,20 @@ class InstagramAdapter:
 
     async def send_text(self, to: str, text: str) -> str:
         version = self._settings.graph_api_version
-        page_id = self._settings.fb_page_id or self._settings.instagram_account_id
-        token = self._settings.fb_page_access_token
-        if not version or not page_id or not token:
-            raise RuntimeError("Instagram send is not configured")
-        url = f"{_GRAPH_HOST}/{version}/{page_id}/messages"
         body = {
             "recipient": {"id": to},
             "message": {"text": text},
         }
+        login_token = self._settings.instagram_access_token
+        if version and login_token:
+            url = f"{_IG_LOGIN_HOST}/{version}/me/messages"
+            token = login_token
+        else:
+            page_id = self._settings.fb_page_id or self._settings.instagram_account_id
+            token = self._settings.fb_page_access_token
+            if not version or not page_id or not token:
+                raise RuntimeError("Instagram send is not configured")
+            url = f"{_GRAPH_HOST}/{version}/{page_id}/messages"
         headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient(transport=self._transport) as client:
             response = await client.post(url, json=body, headers=headers)

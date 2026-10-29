@@ -1,7 +1,7 @@
 # Sell-Safe 🛡️
 **WhatsApp-first shop assistant for Nigerian small sellers that catches fake payment alerts before goods leave the shop.** Speaks Yoruba, Pidgin and English. Powered by Meta Muse models on the Meta Model API (Muse Spark for text and tools, Muse vision for images). Exact model ids are **TODO verify**. Groq is a temporary dev fallback behind `LLMProvider`. Voice notes use Intron Sahara.
 
-Built by Agoro Oluwatimilehin (GitHub: drizzy765) for the Meta Global AI Developer Hackathon (Indie track).
+Built by Agoro Oluwatimilehin (GitHub: drizzy765) with Meta Muse (Muse Spark) for the Meta Global AI Developer Hackathon (Indie track).
 
 ## Problem
 Small sellers on WhatsApp, Instagram and Facebook lose goods to fake transfer screenshots and forged bank alerts. I was nearly a victim myself: a "buyer" sent a convincing transfer screenshot, and the money never arrived. Sellers also spend hours answering the same "how much?" messages.
