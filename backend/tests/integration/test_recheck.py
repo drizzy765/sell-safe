@@ -88,6 +88,7 @@ async def test_recheck_confirms_after_late_webhook() -> None:
     store, orders, payments, order = _store_with_order()
 
     # Manually insert a screenshot evidence with a NOT_FOUND verdict.
+    txn_time = (datetime.now(tz=UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
     payment = payments.get_or_create_payment(
         order_id=order["id"], method="bank_transfer", expected_kobo=1_500_000
     )
@@ -105,7 +106,7 @@ async def test_recheck_confirms_after_late_webhook() -> None:
             "recipient_acct_last4": "1234",
             "reference": "SS-1001",
             "status_text": "successful",
-            "txn_time_iso": "2026-10-27T10:15:00Z",
+            "txn_time_iso": txn_time,
             "app_style": "GTWorld",
             "visual_anomalies": [],
         },
@@ -135,7 +136,7 @@ async def test_recheck_confirms_after_late_webhook() -> None:
             "sender_bank": "GTBank",
             "reference": "SS-1001",
             "status_text": "success",
-            "txn_time_iso": "2026-10-27T10:15:00Z",
+            "txn_time_iso": txn_time,
             "app_style": "paystack",
             "visual_anomalies": [],
         },
