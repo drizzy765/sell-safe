@@ -3,6 +3,7 @@
 - **Phase:** docs only right now; don't add code unless asked.
 - **Harness:** follow `docs/harness_engineering.md` and `.cursor/rules/`.
 - **Layout:** see `docs/architecture.md` and each folder README. Channels in `app/channels/`, LLM in `app/llm/`, Jev in `app/jev/`, verification in `app/verification/`, payments in `app/payments/`.
+- **Meta setup:** WhatsApp is locked (131031). Facebook Page creation is rate-limited. The next test is Instagram Login, which needs no Page. Follow `docs/meta.md` before any Meta app, webhook, or MCP channel work.
 - **Rules:**
   - Never call an LLM SDK directly; use `LLMProvider` (`app/llm`). Never hardcode model names; read from env. Hackathon models are Meta Muse (Spark for text/agent, Muse vision for images, Muse Image, SAM 3.1). Exact ids are **TODO verify**. Groq is only a temporary dev fallback behind `LLM_PROVIDER`. Speech is Intron Sahara, not the LLM provider.
   - Never let the LLM decide a payment verdict; only `app/verification/verdict.py` does.

@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     whatsapp_phone_number_id: str = ""
     whatsapp_business_account_id: str = ""
     instagram_account_id: str = ""
+    instagram_access_token: str = ""
+    instagram_app_secret: str = ""
     fb_page_id: str = ""
     fb_page_access_token: str = ""
     graph_api_version: str = ""

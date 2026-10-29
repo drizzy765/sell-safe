@@ -20,6 +20,8 @@ def _settings() -> Settings:
         fb_page_access_token="test-page-token",
         fb_page_id="page-1",
         instagram_account_id="ig-account-1",
+        instagram_access_token="",
+        instagram_app_secret="",
         graph_api_version="v21.0",
     )
 
@@ -108,3 +110,59 @@ async def test_fetch_media_downloads_cdn_url() -> None:
     assert payload == b"jpeg-bytes"
     assert len(seen) == 1
     assert str(seen[0].url) == "https://cdn.example/ig-image-1.jpg"
+
+
+def test_signature_prefers_instagram_app_secret() -> None:
+    settings = _settings()
+    settings.instagram_app_secret = "test-ig-secret"
+    adapter = InstagramAdapter(settings)
+    raw = b'{"ok":true}'
+
+    ig_signed = {"X-Hub-Signature-256": _sign(raw, "test-ig-secret")}
+    meta_signed = {"X-Hub-Signature-256": _sign(raw, SECRET)}
+
+    assert adapter.verify_signature(raw, ig_signed) is True
+    assert adapter.verify_signature(raw, meta_signed) is False
+
+
+def test_signature_falls_back_to_meta_app_secret() -> None:
+    settings = _settings()
+    settings.instagram_app_secret = ""
+    adapter = InstagramAdapter(settings)
+    raw = b'{"ok":true}'
+
+    assert adapter.verify_signature(raw, {"X-Hub-Signature-256": _sign(raw)}) is True
+
+
+@pytest.mark.asyncio
+async def test_send_text_uses_instagram_login_when_token_set() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"message_id": "igmid.out-login"})
+
+    settings = _settings()
+    settings.instagram_access_token = "test-ig-token"
+    adapter = InstagramAdapter(settings, transport=httpx.MockTransport(handler))
+    message_id = await adapter.send_text("ig-buyer-1", "hello")
+
+    assert message_id == "igmid.out-login"
+    assert len(seen) == 1
+    assert seen[0].url.host == "graph.instagram.com"
+    assert seen[0].url.path == "/v21.0/me/messages"
+    assert seen[0].headers["authorization"] == "Bearer " + "test-ig-token"
+    assert json.loads(seen[0].content) == {
+        "recipient": {"id": "ig-buyer-1"},
+        "message": {"text": "hello"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_send_text_without_any_token_raises() -> None:
+    settings = _settings()
+    settings.fb_page_access_token = ""
+    adapter = InstagramAdapter(settings)
+
+    with pytest.raises(RuntimeError, match="not configured"):
+        await adapter.send_text("ig-buyer-1", "hello")

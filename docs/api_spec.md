@@ -17,6 +17,7 @@ Rules: respond `200` within 2 s, process async (background task/queue); dedupe b
 | Method | Path | Body / Query | Response |
 |---|---|---|---|
 | GET | `/health` | – | `{status:"ok", provider:"groq"}` |
+| GET | `/privacy` | – | HTML privacy policy |
 | POST | `/sellers` | `{name, business_name, whatsapp_id, language}` | seller |
 | GET | `/sellers/{id}/products` | `?q=` | products[] |
 | POST | `/sellers/{id}/products` | product | product |

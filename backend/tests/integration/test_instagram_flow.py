@@ -29,6 +29,8 @@ def _settings() -> Settings:
         fb_page_access_token="test-page-token",
         fb_page_id="page-1",
         instagram_account_id=IG_ACCOUNT,
+        instagram_access_token="",
+        instagram_app_secret="",
         graph_api_version="v21.0",
     )
 
@@ -213,3 +215,95 @@ def test_instagram_voice_note_creates_order() -> None:
     assert saved["language"] == "pcm"
     assert saved["asr_confidence"] == 0.9
     assert b"ogg-bytes" not in repr(store.messages).encode()
+
+
+def test_instagram_verify_handshake() -> None:
+    app = create_app(_settings(), store=MemoryEchoStore())
+    client = TestClient(app)
+
+    ok = client.get(
+        "/webhooks/instagram",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verify-me",
+            "hub.challenge": "ch-ig",
+        },
+    )
+    assert ok.status_code == 200
+    assert ok.text == "ch-ig"
+
+    bad = client.get(
+        "/webhooks/instagram",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "wrong",
+            "hub.challenge": "ch-ig",
+        },
+    )
+    assert bad.status_code == 403
+
+
+def test_meta_verify_handshake() -> None:
+    app = create_app(_settings(), store=MemoryEchoStore())
+    client = TestClient(app)
+
+    ok = client.get(
+        "/webhooks/meta",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verify-me",
+            "hub.challenge": "ch-meta",
+        },
+    )
+    assert ok.status_code == 200
+    assert ok.text == "ch-meta"
+
+    bad = client.get(
+        "/webhooks/meta",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "wrong",
+            "hub.challenge": "ch-meta",
+        },
+    )
+    assert bad.status_code == 403
+
+
+def test_instagram_post_prefers_app_secret_signature() -> None:
+    settings = _settings()
+    settings.instagram_app_secret = "test-ig-secret"
+    app = create_app(settings, store=MemoryEchoStore())
+    client = TestClient(app)
+    raw = b'{"object":"instagram","entry":[]}'
+
+    digest = hmac.new(b"test-ig-secret", raw, hashlib.sha256).hexdigest()
+    ok = client.post(
+        "/webhooks/instagram",
+        content=raw,
+        headers={
+            "X-Hub-Signature-256": f"sha256={digest}",
+            "content-type": "application/json",
+        },
+    )
+    assert ok.status_code == 200
+
+    meta_signed = client.post(
+        "/webhooks/instagram",
+        content=raw,
+        headers={"X-Hub-Signature-256": _sign(raw), "content-type": "application/json"},
+    )
+    assert meta_signed.status_code == 401
+
+
+def test_instagram_without_supabase_uses_memory_store() -> None:
+    app = create_app(
+        _settings(),
+        provider=FakeProvider(),
+        jev=FakeJev(),
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"message_id": "m1"})
+        ),
+    )
+    client = TestClient(app)
+    _post(client, "memory", "hello")
+    assert isinstance(app.state.store, MemoryEchoStore)
