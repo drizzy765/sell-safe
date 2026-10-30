@@ -2,208 +2,367 @@
 
 ## Overview
 
-Sell-Safe is a WhatsApp-first shop assistant for Nigerian small sellers. A seller snaps a product photo and Muse vision writes the listing. Exact Muse model ids are **TODO verify**. Groq is only a temporary fallback. Voice notes use Intron Sahara. Buyers ask prices and place orders in English, Pidgin, or Yoruba. Before goods leave the shop, a deterministic verification engine checks transfer screenshots against bank evidence (Paystack webhook, forwarded alert) and returns CONFIRMED, NOT FOUND, SUSPICIOUS, or UNVERIFIED. The LLM phrases replies. It never sets a payment verdict.
+Sell-Safe is a **payment safety layer** for Nigerian small sellers on Instagram and WhatsApp. It verifies transfer screenshots against real bank evidence before goods leave the shop. The LLM phrases replies; it never sets a payment verdict. The verdict engine does.
 
-Deadline: submit by **4 Nov 2026, 18:00 WAT** (hard stop 4 Nov 21:00 ET / 5 Nov 02:00 WAT). Feature freeze: **2 Nov, 23:59 WAT**. Today is 26 Oct. The repo is docs and empty folders. No application code yet.
+**Current status:** Oct 30, 2026. Phases 1-3 complete (foundation, LLM, buyer chat). WhatsApp locked (error 131031). Instagram working. 155/156 tests passing.
 
-This plan follows `docs/execution_plan.md` and the specs in `docs/`. Tasks and acceptance criteria live in `tasks/todo.md`.
+**Deadline:** Nov 5, 02:00 WAT (hard stop). Feature freeze: Nov 2, 23:59 WAT.
 
-## Architecture decisions
+**Belief:** We can finish everything before the deadline. Nothing is cut.
 
-- **Code lives in the folders that already exist.** API under `backend/app/`. Onboarding site under `web/`. `docs/architecture.md` still shows a root `app/` and a `dashboard/` folder. Implement against `backend/` and `web/`, then update that doc when behaviour is real.
-- **Jev client lives in `backend/app/decisions/`.** That folder's README owns the TypeSafe client and question specs. Docs that say `app/jev/` mean this package.
-- **One brain, channel adapters at the edge.** WhatsApp, Instagram, and Messenger normalize to `InboundMessage`, then share the graph in `backend/app/agent/graph/`.
-- **`LLMProvider` is the only LLM entry.** Hackathon target is Meta Muse (`LLM_PROVIDER=meta`): Muse Spark for text and tools, Muse vision for images. Exact ids are **TODO verify**. Groq (`LLM_PROVIDER=groq`) is a temporary dev fallback behind the same protocol. Speech is Intron Sahara, not the LLM provider.
-- **Verdicts come only from `backend/app/verification/`.** Evidence trust level, rules R1–R9, and Jev probabilities feed `verdict.py`. Tools may read a verdict. They may not invent one. A screenshot alone never sets `release_allowed`.
-- **Money is integer kobo. Times are UTC `timestamptz`, shown in WAT.** User-facing amounts, account details, and verdicts use fixed templates.
-- **Webhooks:** verify the signature on the raw body, dedupe, return 200 quickly, process asynchronously.
-- **Hosted APIs only.** No local weights, no torch. Synthetic receipts only in git; real-derived images stay in `evals/data/private/` (gitignored).
-- **Requirements at the repo root** so CI matches `docs/github_rules.md`. Pytest uses `pythonpath = backend`.
+---
 
-## Dependency graph
+## Changes from Previous Plan
+
+| Aspect | Before | Now |
+|---|---|---|
+| **Primary channel** | WhatsApp-first | Instagram-first (WhatsApp locked) |
+| **Onboarding** | 7 technical Meta steps | One "Connect Instagram" button + sample reply demo first |
+| **WhatsApp** | Full setup guide | "Coming Soon" waitlist with phone number capture |
+| **Core feature** | Same priority | **P0:** Payment verification must be flawless |
+| **Other features** | Many marked CUT | **All restored** — nothing cut, build if time permits |
+| **Value demonstration** | After setup | Before setup — sample reply + safety demo |
+
+---
+
+## Architecture Decisions (Unchanged)
+
+- **Code lives in `backend/app/` and `web/`** as already implemented
+- **One brain, channel adapters at the edge** — WhatsApp, Instagram, Messenger normalize to `InboundMessage`
+- **`LLMProvider` is the only LLM entry** — Meta Muse target, Groq fallback
+- **Verdicts come only from `backend/app/verification/`** — deterministic engine, no LLM decides
+- **Money is integer kobo. Times are UTC `timestamptz`.**
+- **Webhooks:** verify signature, dedupe, return 200 fast, process async
+
+---
+
+## Dependency Graph
 
 ```
-settings + /health + CI
-        │
-        ├── SQL schema
-        │       │
-        │       ├── repos (sellers, products, orders, messages, evidence)
-        │       │
-        │       └── webhook dedupe
-        │
-        ├── WhatsApp adapter ──► verify handshake + echo
-        │
-        └── LLMProvider (Groq, then Meta)
-                │
-                ├── vision: photo → catalog item
-                │
-                ├── Jev route → sales graph → order (awaiting_payment)
-                │
-                └── vision: receipt extract → rules → verdict
-                        │
-                        ├── Paystack webhook (level 4) → CONFIRMED
-                        ├── bank alert (level 2) → seller decides
-                        ├── fraud_signals, reminders, daily summary
-                        └── Instagram adapter + voice transcription
+settings + /health + CI ✓
+         │
+         ├── SQL schema ✓
+         │       │
+         │       ├── repos (sellers, products, orders, messages) ✓
+         │       │
+         │       └── webhook dedupe ✓
+         │
+         ├── Instagram adapter ✓
+         │       │
+         │       └── Working DMs (seller catalog, buyer orders)
+         │
+         └── LLMProvider (Groq, Meta) ✓
+                 │
+                 ├── vision: photo → catalog item ✓
+                 │
+                 ├── Jev route → sales graph → order ✓
+                 │
+                 └── vision: receipt extract → rules → verdict ← P0 PRIORITY
+                         │
+                         ├── Paystack webhook (level 4) → CONFIRMED
+                         ├── bank alert (level 2) → seller decides
+                         ├── evidence matching → verdict
+                         └── fraud signals (R6) → blocklist
 
-web/ onboarding (after a public webhook URL exists)
-demo seed → video → submission
+web/ onboarding (P1-P4)
+    ├── WhatsApp waitlist (phone number capture)
+    ├── Simplified Instagram connect (one button)
+    ├── Sample reply demo (prove value first)
+    ├── Payment safety demo (fake vs real)
+    └── Chat onboarding (stretch)
+
+ops/ (P5, if time)
+    ├── Voice transcription (Intron STT)
+    ├── Fraud memory (cross-seller blocklist)
+    ├── Payment reminders
+    └── Daily summary
 ```
 
-Build bottom-up through Phase 4. After the WhatsApp order-and-verdict path works, Instagram, voice, fraud memory, jobs, and the website can overlap.
+---
 
-## Task list
+## Priority Order (Nothing Cut)
 
-### Phase 1: Foundation (Sun 26 Oct)
-- [ ] Task 1: App skeleton, settings, `/health`
-- [ ] Task 2: `.gitignore` and CI
-- [ ] Task 3: Supabase schema migration
-- [ ] Task 4: WhatsApp channel adapter
-- [ ] Task 5: Meta verify handshake and echo bot
+### P0: Payment Verification (Tasks 15-20) — MUST COMPLETE FIRST
+**The core promise. Must work flawlessly.**
 
-### Checkpoint: Foundation
-- [ ] `ruff` and `pytest -q -m "not live"` pass
-- [ ] GET webhook verify returns the challenge
-- [ ] A test WhatsApp text gets an echo
-- [ ] Human review before Phase 2
+| Task | What | Why Critical |
+|---|---|---|
+| 15 | Receipt extraction | Vision reads screenshot fields |
+| 16 | Rules R1–R9 | Hard-coded fraud detection rules |
+| 17 | Verdict engine | CONFIRMED/SUSPICIOUS/NOT_FOUND logic |
+| 18 | Paystack webhook | Level-4 evidence from real bank |
+| 19 | Screenshot+webhook → verdict | Full verification flow |
+| 20 | Flutterwave webhook | Backup payment provider |
 
-### Phase 2: LLM and catalog (Mon 27 Oct)
-- [ ] Task 6: `LLMProvider`, Groq chat, `FakeProvider`
-- [ ] Task 7: Meta provider behind env
-- [ ] Task 8: Catalog vision extraction
-- [ ] Task 9: Photo to saved product with seller-confirmed price
+**Success criteria:**
+- Fake screenshot → SUSPICIOUS → release blocked
+- Real Paystack webhook → CONFIRMED → release allowed
+- Edited amount → NOT FOUND → release blocked
+- No path confirms from screenshot alone
 
-### Checkpoint: Catalog
-- [ ] Seller photo becomes a product row and a chat confirmation
-- [ ] Tests use `FakeProvider`; no live LLM in CI
+**Timeline:** Oct 30-31 (2 days)
 
-### Phase 3: Buyer chat and orders (Tue 28 Oct)
-- [ ] Task 10: Jev client and routing questions
-- [ ] Task 11: State graph observe, route, respond
-- [ ] Task 12: Catalog and order tools
-- [ ] Task 13: Language prompts, money templates, reply check
-- [ ] Task 14: Price question and order on WhatsApp
+---
 
-### Checkpoint: Orders
-- [ ] Pidgin price question and "I go take 1" create an `awaiting_payment` order
-- [ ] Prices in the reply match the database
+### P1: WhatsApp Waitlist
 
-### Phase 4: Verification v1 (Wed 29 Oct)
+| Component | Description |
+|---|---|
+| UI | "WhatsApp coming soon — get notified" card with phone input |
+| Backend | `POST /api/waitlist` stores `{whatsapp_number, created_at}` |
+| Future | `POST /api/waitlist/notify` sends WhatsApp message with connect link (stub) |
+
+**Why WhatsApp number, not email:** Nigerian sellers live on WhatsApp.
+
+**Timeline:** Nov 1 (1 day)
+
+---
+
+### P2: Simplified Instagram Connect
+
+| Current (Overwhelming) | New (Simple) |
+|---|---|
+| 7 technical steps with Meta app IDs | One "Connect Instagram" button |
+| Webhook URL, verify token, permissions | OAuth flow handles it |
+| Code blocks to copy | Automatic configuration |
+
+**Technical steps hidden behind:** "Advanced setup (for developers)" link
+
+**Timeline:** Nov 1 (1 day, parallel with P1)
+
+---
+
+### P3: Sample Reply Demo
+
+| Flow | Description |
+|---|---|
+| Step 1 | Seller connects Instagram, Sell-Safe reads one product |
+| Step 2 | Mock customer asks: "How much for the [product name]?" |
+| Step 3 | LLM generates reply using seller's actual product |
+| Step 4 | Seller sees: "This is how Sell-Safe would reply" |
+
+**Timeline:** Nov 1 (1 day, parallel with P1-P2)
+
+---
+
+### P4: Payment Safety Demo
+
+| Screen | Content |
+|---|---|
+| Left side | Fake transfer screenshot (edited amount) |
+| Right side | Real bank alert from Paystack |
+| Verdicts | SUSPICIOUS vs CONFIRMED |
+
+**Timeline:** Nov 1 (1 day, parallel with P1-P3)
+
+---
+
+### P5: All Remaining Features (Nothing Cut)
+
+**If P0-P4 solid by Nov 1, build everything:**
+
+| Task | Feature | Timeline |
+|---|---|---|
+| 21 | Bank alert parser | Nov 2 morning |
+| 22 | Jev tamper scores | Nov 2 morning |
+| 23 | Human-in-the-loop | Nov 2 afternoon |
+| 24 | Eval runner | Nov 2 afternoon |
+| 25 | Demo storyboard | Nov 2 evening |
+| 27 | Voice transcription | Nov 3 morning |
+| 28 | Fraud memory | Nov 3 afternoon |
+| 29 | Reminders + daily summary | Nov 3 afternoon |
+| 30 | Onboarding polish | Nov 4 morning |
+| 32 | Web finish (status, FAQ) | Nov 4 morning |
+| 34 | Messenger/RefPay (stretch) | Nov 4 if time |
+
+**Timeline:** Nov 2-4 (3 days)
+
+---
+
+## Task List (Reordered by Priority)
+
+### Phase 4: Payment Verification (Oct 30-31) — P0
+
 - [ ] Task 15: Receipt extraction and image hashes
 - [ ] Task 16: Rules R1–R9
 - [ ] Task 17: Verdict engine
-- [ ] Task 18: Paystack test virtual account and webhook
-- [ ] Task 19: Screenshot and webhook paths to a verdict
-- [ ] Task 20: Flutterwave webhook on the same evidence path
+- [ ] Task 18: Paystack webhook
+- [ ] Task 19: Screenshot and webhook paths to verdict
+- [ ] Task 20: Flutterwave webhook
 
-### Checkpoint: Verification v1
-- [ ] Test transfer ends CONFIRMED with `release_allowed`
-- [ ] Edited or unmatched screenshot ends SUSPICIOUS or NOT FOUND and release returns 409
-- [ ] Every verdict-table row has a unit test
-- [ ] Zero path sets CONFIRMED from a screenshot alone
+**Checkpoint:**
+- [ ] Test transfer CONFIRMED with release allowed
+- [ ] Fake screenshot SUSPICIOUS with release blocked
+- [ ] Every verdict table row has a test
+- [ ] Review before moving to P1
 
-### Phase 5: Verification v2 and evals (Thu 30 Oct)
+---
+
+### Phase 5: Onboarding Improvements (Nov 1) — P1-P4
+
+**P1: WhatsApp Waitlist**
+- [ ] Task WA-1: Waitlist schema
+- [ ] Task WA-2: Waitlist UI component
+- [ ] Task WA-3: Waitlist API endpoint
+- [ ] Task WA-4: Future notification endpoint (stub)
+
+**P2: Simplified Instagram**
+- [ ] Task IG-1: Replace 7-step guide with one-click OAuth
+- [ ] Task IG-2: Hide technical steps behind "Advanced setup"
+
+**P3: Sample Reply Demo**
+- [ ] Task DEMO-1: Mock customer message generator
+- [ ] Task DEMO-2: Live reply preview
+- [ ] Task DEMO-3: Demo state management
+
+**P4: Payment Safety Demo**
+- [ ] Task SAFE-1: Fake screenshot fixture
+- [ ] Task SAFE-2: Demo UI component
+- [ ] Task SAFE-3: Demo verdict endpoint
+
+**Checkpoint:**
+- [ ] WhatsApp waitlist captures phone numbers
+- [ ] Instagram connect is one click
+- [ ] Sample reply demo shows value
+- [ ] Payment safety demo builds trust
+
+---
+
+### Phase 6: Verification V2 (Nov 2) — P5
+
 - [ ] Task 21: Forwarded bank-alert parser
-- [ ] Task 22: Jev tamper and match scores inside confidence
-- [ ] Task 23: Seller verdict card, human-in-the-loop, recheck window
+- [ ] Task 22: Jev tamper and match scores
+- [ ] Task 23: Seller verdict card + human-in-the-loop
 - [ ] Task 24: Eval runner and synthetic set v1
-- [ ] Task 25: Demo storyboard draft (human)
 
-### Checkpoint: Verification v2
-- [ ] `python -m evals.run --provider groq` writes `evals/report.md`
-- [ ] False CONFIRMED on the fake set is 0
-- [ ] Storyboard matches `docs/hackathon_launch.md`
+**Checkpoint:**
+- [ ] Bank alerts parse correctly
+- [ ] Jev scores integrated
+- [ ] Human-in-the-loop for mid-confidence
+- [ ] Eval runner passes synthetic set
 
-### Phase 6: Instagram and voice (Fri 31 Oct)
-- [ ] Task 26: Instagram adapter on the same graph
-- [ ] Task 27: Voice-note transcription
+---
 
-### Checkpoint: Channels
-- [ ] The order flow completes in an Instagram DM
-- [ ] A voice note becomes text and can place an order
-- [ ] If WhatsApp core is still shaky, skip this phase (cut list item 6)
+### Phase 7: Fraud + Ops (Nov 2-3) — P5
 
-### Phase 7: Fraud memory, jobs, web start (Sat 1 Nov)
-- [ ] Task 28: Scammer memory
+- [ ] Task 28: Scammer memory (fraud signals)
 - [ ] Task 29: Payment reminders and daily summary
-- [ ] Task 30: Onboarding site shell and platform steps
-- [ ] Task 31: Rough demo recording (human)
 
-### Checkpoint: Ops
-- [ ] A confirmed fraud signal flags a second seller
-- [ ] Daily summary message includes naira saved
-- [ ] `/` renders WhatsApp, Instagram, and Messenger steps
+**Checkpoint:**
+- [ ] Fraud signals block repeat scammers
+- [ ] Daily summary calculates ₦ saved
 
-### Phase 8: Web finish, deploy, freeze (Sun 2 Nov)
-- [ ] Task 32: Status, FAQ, privacy, accessibility, mobile
-- [ ] Task 33: Deploy API and site; tag `v0.1-demo`
-- [ ] Task 34: One stretch only — Messenger adapter or RefPay USDC testnet
+---
 
-### Checkpoint: Feature freeze (23:59 WAT)
-- [ ] Deployed URL stays up
-- [ ] Core path still works on the WhatsApp test number
-- [ ] No new features after the tag
+### Phase 8: Voice + Channels (Nov 3) — P5
 
-### Phase 9: Demo (Mon 3 Nov)
+- [ ] Task 27: Voice-note transcription (Intron STT)
+
+**Checkpoint:**
+- [ ] Voice notes transcribed (yo, pcm, en)
+- [ ] Order flow works with voice
+
+---
+
+### Phase 9: Freeze and Demo (Nov 2-4)
+
+- [ ] Task 25: Demo storyboard draft
+- [ ] Task 30: Onboarding site polish
+- [ ] Task 31: Rough demo recording
+- [ ] Task 32: Status, FAQ, privacy pages
+- [ ] Task 33: Deploy and tag v0.1-demo
 - [ ] Task 35: Seed demo data
-- [ ] Task 36: Final video, two takes (human)
+- [ ] Task 36: Final video
+- [ ] Task 37: README, screenshots, pre-submit
+- [ ] Task 38: Submit and tag v1.0-submission
 
-### Checkpoint: Video
-- [ ] Unlisted video is ≤ 3 minutes and opens logged out
+**Checkpoint:**
+- [ ] Feature freeze at 23:59 WAT Nov 2
+- [ ] Tag v0.1-demo
+- [ ] Video ≤3 minutes
+- [ ] Submitted by 18:00 WAT Nov 4
 
-### Phase 10: Submit (Tue 4 Nov)
-- [ ] Task 37: README, screenshots, pre-submit tests
-- [ ] Task 38: Submit and tag `v1.0-submission` (human)
+---
 
-### Checkpoint: Submitted
-- [ ] Submitted by 18:00 WAT
-- [ ] Confirmation saved
-- [ ] `pytest`, evals, and gitleaks are green
+### Phase 10: Stretch (Nov 4, if time) — P5
 
-## What never gets cut
+- [ ] Task 34: Messenger adapter or RefPay USDC
 
-Photo to catalog, buyer order, Paystack webhook confirmation, screenshot verdict, demo video.
+---
 
-## Cut from the top if a day slips
+## Design Principles
 
-1. Mono sandbox (do not schedule)
-2. Messenger adapter (only the Phase 8 stretch slot)
-3. Next.js seller dashboard (do not schedule; the daily summary replaces it)
-4. Web onboarding reduced to one static WhatsApp page
-5. Crypto / RefPay
-6. Voice replies (keep transcription)
-7. Instagram, only if WhatsApp is not solid by 31 Oct
+1. **Hide all technical complexity.** No visible Meta app IDs, webhook URLs, verify tokens.
+2. **Feel like a helpful assistant, not a form.** Conversational, warm.
+3. **Prove value before asking for work.** Sample reply demo first.
+4. **Never sound like surveillance.** Frame as "organizing," not "watching."
+5. **WhatsApp number, not email.** Meet sellers where they are.
+6. **"Do this later" on every step.** Partial setup is better than abandoned setup.
 
-## Parallel work
+---
 
-Safe after Phase 4: eval fixtures, bank-alert parser, and the web shell. Instagram and voice are independent of each other once the graph exists. Schema migrations and the shared webhook contract stay sequential.
+## Nothing Gets Cut
 
-## Risks and mitigations
+| Feature | Status |
+|---|---|
+| Payment verification | P0 — must complete |
+| WhatsApp waitlist | P1 — build |
+| Simplified Instagram | P2 — build |
+| Sample reply demo | P3 — build |
+| Payment safety demo | P4 — build |
+| Bank alert parser | P5 — build if P0-P4 solid |
+| Jev tamper scores | P5 — build if P0-P4 solid |
+| Human-in-the-loop | P5 — build if P0-P4 solid |
+| Eval runner | P5 — build if P0-P4 solid |
+| Voice transcription | P5 — build if P0-P4 solid |
+| Fraud memory | P5 — build if P0-P4 solid |
+| Reminders + summary | P5 — build if P0-P4 solid |
+| Demo video | Required — build |
+| Deploy + submit | Required — build |
+
+---
+
+## Schedule Summary
+
+| Day | Focus | Tasks |
+|---|---|---|
+| **Oct 30** | Payment verification | Tasks 15-16 |
+| **Oct 31** | Payment verification | Tasks 17-20 |
+| **Nov 1** | Onboarding | Tasks WA, IG, DEMO, SAFE (P1-P4) |
+| **Nov 2** | Verification V2 + Freeze | Tasks 21-25, freeze at 23:59 |
+| **Nov 3** | Voice + Ops + Video | Tasks 27-29, 31, 35-36 |
+| **Nov 4** | Submit | Tasks 30, 32-33, 37-38 |
+
+**Total:** 6 days, ~38 tasks, ~6 tasks per day.
+
+**Belief:** We can do this.
+
+---
+
+## Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Meta card restricted or credits late | High | Groq behind `LLMProvider`; switch with `LLM_PROVIDER` |
-| WhatsApp test number can only message registered recipients | High | Register demo phones on day 1 |
-| Instagram Business and Page linking is slow | Med | Start Meta app setup on day 1, before Task 26 |
-| False CONFIRMED on a fake receipt | High | Launch gate in Task 24; screenshot trust level is 1 |
-| Paystack dedicated virtual accounts unavailable in test mode | High | Confirm against current Paystack docs before Task 18; Flutterwave is the backup evidence path |
-| Jev or Meta request schema differs from the docs | Med | Verify official docs before coding Tasks 7, 10, and 22; fake the client in unit tests |
-| Yoruba copy is wrong | Med | Native-speaker review of templates before the video |
-| Weak laptop | Med | Hosted APIs and Supabase cloud only |
-| Video quality | Med | Storyboard on 30 Oct, rough cut 1 Nov, two final takes 3 Nov |
+| Payment verification doesn't catch fakes | Critical | Screenshot trust level 1; eval gate zero tolerance |
+| Instagram OAuth breaks | High | Keep technical flow as fallback |
+| WhatsApp never unblocks | Medium | Position as Instagram-first; waitlist captures demand |
+| Voice transcription fails | Low | Skip if broken; not core feature |
+| Running out of time | Medium | Prioritize P0-P4; P5 is bonus |
+| Demo video quality poor | Medium | Two recording sessions; script ready |
 
-## Open questions
+---
 
-- Meta Model API base URL, vision, and tool-calling: confirm on dev.meta.ai before production uses `LLM_PROVIDER=meta`.
-- Jev `POST https://api.typesafe.ai/v1/systemone` body: confirm on docs.typesafe.ai before Task 10.
-- Paystack dedicated virtual account event names in test mode: confirm before Task 18.
-- Hackathon submission form (Devpost vs Cerebral Valley) and whether a live URL is required: confirm before Task 38.
-- Yoruba templates need a native speaker. Who reviews them, and by which day?
-- Platform icons on the website: confirm Meta brand rules before shipping logos.
+## Standing Definition of Done
 
-## Standing definition of done (every code task)
+- Branch `feat/…`, one concern, Conventional Commit, PR into `main`
+- `ruff check . && ruff format --check .` pass
+- `pytest -q -m "not live"` passes
+- New env names in `.env.example` only
+- No secrets, real phone numbers, or real receipts
+- User-visible work saves a clip under `demo/clips/`
 
-- Branch `feat/…`, one concern, Conventional Commit, PR into `main`.
-- `ruff check .` and `ruff format --check .` pass. `pytest -q -m "not live"` passes.
-- New env names go in `.env.example` only. No secrets, real phone numbers, or real receipts.
-- Docs updated when behaviour changes. User-visible work saves a clip under `demo/clips/` and a `CHANGELOG` line.
+---
+
+## Final Note
+
+**Nothing is cut. Everything is possible. We have 6 days. Let's build.**

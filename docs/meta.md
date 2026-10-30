@@ -1,12 +1,163 @@
 # Meta platforms
 
-Sell-Safe’s Meta app is named **Sell-Safe**. Read `META_APP_ID` from `.env`. The app is in **Development** (`published: false`). A personal WhatsApp account is the right recipient. The WhatsApp Business mobile app is not required.
+Sell-Safe's Meta app is named **Sell-Safe**. Read `META_APP_ID` from `.env`. The app is in **Development** (`published: false`).
 
-Two remote MCP servers exist. Use whichever one is connected in the current client. Cursor reached **Meta Social Technologies** (`https://mcp.facebook.com/devtools`, tools `devtools_*`) and Muse Code reached **WhatsApp Business Tools** (`https://mcp.facebook.com/whatsapp_business_tools`, tools `whatsapp_biz_*`). The other server in each client failed OAuth with `Dynamic registration is not available for this client`. That gate is on Meta’s side. Leave the failed server alone.
+**Current status (Oct 30, 2026):**
+- ❌ **WhatsApp:** Blocked (error 131031, business account locked)
+- ✅ **Instagram:** Working via Instagram Login
+
+**Strategy:** Instagram-first. WhatsApp waitlist captures phone numbers for notification when unblocked.
+
+---
+
+## WhatsApp Status: BLOCKED
+
+**Error 131031:** Business Account locked. The WhatsApp Manager shows "Account restricted" and requires business verification documents. As a hackathon project without formal business registration, we cannot complete this verification.
+
+**Impact:**
+- Cannot send WhatsApp messages via API
+- Cannot create new test sends
+- The lock is on the Meta business account, not the personal handset
+
+**Mitigation:**
+- Pivoted to Instagram as primary channel
+- Built WhatsApp waitlist to capture demand
+- When unblocked, will notify sellers via WhatsApp with one-tap connect link
+
+**Technical details:**
+- Test number (`+1 555...`) shows `status: failed`, error **131031**
+- `whatsapp_biz_verify_business` reports `is_verified: false`
+- Business profile incomplete, requires document upload
+- OAuthException **190** on token refresh (token expired)
+
+**Do not attempt:**
+- New WhatsApp test sends (extends the lock)
+- Business verification document upload (no formal business exists)
+- Creating new Pages (rate-limited, blocked)
+
+---
+
+## Instagram Status: WORKING
+
+**Instagram Login** does not require a Facebook Page. This is our live path.
+
+**Setup complete:**
+- Account `sellsafe000` converted to Business professional account
+- Added as Instagram Tester on Sell-Safe app
+- **API setup with Instagram login** completed
+- `.env` has `INSTAGRAM_ACCOUNT_ID` and `INSTAGRAM_ACCESS_TOKEN`
+- Webhook subscription **On** for messages
+- Webhook callback: `https://<APP_BASE_URL>/webhooks/instagram`
+- `GET /webhooks/instagram` returns 200 for verify handshake
+- `POST /webhooks/instagram` receives messages
+
+**Verified:**
+- `GET https://graph.instagram.com/{version}/me` returns 200 with username `sellsafe000`
+- Profile check successful
+- One real DM received and processed (returned 500 because Supabase empty, now using in-memory stores for local dev)
+
+**For sellers:**
+- Connect via "Connect Instagram" button (one-click OAuth)
+- No technical setup required
+- No Page creation needed
+- Works immediately in Development mode
+
+---
+
+## Facebook Page Status: BLOCKED
+
+**Error:** "Cannot create Page: You have made too many attempts to create a Page recently."
+
+**Impact:**
+- Cannot create new Pages
+- Messenger requires a Page (cannot proceed)
+- More attempts extend the block
+
+**Mitigation:**
+- Instagram Login does not need a Page
+- Skip Messenger for this release
+- Leave `FB_PAGE_ID` and `FB_PAGE_ACCESS_TOKEN` empty in `.env`
+
+---
+
+## MCP Servers
+
+Two remote MCP servers exist:
+
+1. **Meta Social Technologies** (`https://mcp.facebook.com/devtools`)
+   - Tools: `devtools_*`
+   - Status: Working in Cursor
+
+2. **WhatsApp Business Tools** (`https://mcp.facebook.com/whatsapp_business_tools`)
+   - Tools: `whatsapp_biz_*`
+   - Status: Working in Muse Code
+
+The other server in each client failed OAuth with `Dynamic registration is not available for this client`. This is a Meta-side limitation. Leave the failed server alone.
+
+**Capabilities:**
+- `devtools_purge_webhook` — clear webhook subscriptions
+- `devtools_get_webhooks` — list webhook subscriptions
+- `whatsapp_biz_verify_business` — check verification status (returns `is_verified: false`)
+
+**Cannot do:**
+- Grant verification (requires human review)
+- See Page ID or Instagram ID
+- See or set tokens
+- Create Pages
+
+---
+
+## Environment Variables
+
+**Set and working:**
+- `INSTAGRAM_ACCOUNT_ID`
+- `INSTAGRAM_ACCESS_TOKEN`
+- `INSTAGRAM_APP_SECRET` (from Instagram Login screen, different from `META_APP_SECRET`)
+
+**Set but not working:**
+- `WHATSAPP_PHONE_NUMBER_ID` (blocked)
+- `WHATSAPP_BUSINESS_ACCOUNT_ID` (blocked)
+- `WHATSAPP_ACCESS_TOKEN` (expired)
+
+**Empty:**
+- `FB_PAGE_ID` (cannot create Page)
+- `FB_PAGE_ACCESS_TOKEN` (no Page)
+
+**Both:**
+- `META_APP_ID`
+- `META_APP_SECRET`
+- `META_VERIFY_TOKEN`
+- `GRAPH_API_VERSION`
+
+---
+
+## Architecture Decision
+
+**Instagram-first, WhatsApp waitlist.**
+
+Given the blockers:
+1. Build and ship with Instagram (working)
+2. Capture WhatsApp demand via waitlist (phone numbers)
+3. When Meta unblocks or business verification completes:
+   - Message waitlist via WhatsApp with one-tap connect link
+   - Enable WhatsApp as second channel
+   - Keep Instagram as primary (it's working well)
+
+**Simplified onboarding:**
+- One "Connect Instagram" button (OAuth)
+- No technical Meta setup visible to sellers
+- Advanced flow hidden behind "Developer setup" link
+- Technical steps moved to documentation only
+
+---
+
+## Original Notes (Preserved)
+
+Two remote MCP servers exist. Use whichever one is connected in the current client. Cursor reached **Meta Social Technologies** (`https://mcp.facebook.com/devtools`, tools `devtools_*`) and Muse Code reached **WhatsApp Business Tools** (`https://mcp.facebook.com/whatsapp_business_tools`, tools `whatsapp_biz_*`). The other server in each client failed OAuth with `Dynamic registration is not available for this client`. That gate is on Meta's side. Leave the failed server alone.
 
 Checked 2026-10-29, later the same day.
 
-## WhatsApp is locked
+### WhatsApp is locked (detailed notes)
 
 Sends from API setup show success, then the `messages` webhook reports `status: failed`, error **131031**, title **Business Account locked**. The recipient `wa_id` was a real WhatsApp user, so this failure is the sender account, not a missing allow-list entry and not the personal handset.
 
@@ -18,7 +169,7 @@ Another personal WhatsApp number does not clear **131031**. The lock sits on the
 
 **Human WhatsApp path, when a live send is needed again**
 
-1. Open `https://developers.facebook.com/apps/<META_APP_ID>/use_cases/customize/api-testing-v2/` (**Step 1. Try it out**). **From** stays the `+1 555` test number. **Recipient** must be the owner’s own number, Nigeria `+234`, national number with the leading `0` removed, and the verification code entered so the row is checked.
+1. Open `https://developers.facebook.com/apps/<META_APP_ID>/use_cases/customize/api-testing-v2/` (**Step 1. Try it out**). **From** stays the `+1 555` test number. **Recipient** must be the owner's own number, Nigeria `+234`, national number with the leading `0` removed, and the verification code entered so the row is checked.
 2. Send once from that page. The WhatsApp MCP send tool does not send from a test number.
 3. Expand the newest `messages` webhook row. Done means `status` is `delivered` or `read`. `failed` plus `131031` means the lock is unchanged. Stop sending.
 4. **Step 2. Production setup** (webhooks) waits until `APP_BASE_URL` is a public `https` origin. Callback path is `/webhooks/meta`. Verify token is `META_VERIFY_TOKEN`.
@@ -28,7 +179,7 @@ Another personal WhatsApp number does not clear **131031**. The lock sits on the
 
 The WhatsApp MCP server has no use-case manage tool. It cannot see a Page id, an Instagram id, or a token. A second pass wrote nothing to `.env`.
 
-## Facebook Page creation is blocked
+### Facebook Page creation is blocked
 
 The owner and a friend both get **Cannot create Page: You have made too many attempts to create a Page recently.** Stop creating Pages. More attempts extend the block.
 
@@ -36,7 +187,7 @@ Messenger and **API setup with Facebook login** need that Page. Both wait. Leave
 
 The three use cases are already on the Sell-Safe app: WhatsApp, **Manage messaging & content on Instagram**, and Messenger. Create no second app.
 
-## Instagram Login is the live path
+### Instagram Login is the live path (detailed notes)
 
 The owner switched their existing Instagram to a **Business** professional account. That is the account to connect. A new Instagram is not required.
 
