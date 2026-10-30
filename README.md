@@ -40,9 +40,9 @@ The LLM phrases replies. Only the deterministic verification engine sets verdict
 | **P0** | Payment verification: screenshot → extraction → rules → verdict | In progress (Tasks 15-20) |
 | **P0** | Paystack webhook: real bank evidence → CONFIRMED | In progress |
 | **P1** | WhatsApp waitlist: collect phone numbers, notify on unblock | Planned (Nov 1) |
-| **P2** | Simplified Instagram: one-click connect, hide technical steps | Planned (Nov 1) |
-| **P3** | Sample reply demo: show AI reply before seller does any work | Planned (Nov 1) |
-| **P4** | Payment safety demo: fake vs real screenshot comparison | Planned (Nov 1-2) |
+| **P2** | Simplified Instagram: one-click connect, hide technical steps | On the Instagram tab |
+| **P3** | Sample reply demo: show AI reply before seller does any work | Shown after connect |
+| **P4** | Payment safety demo: fake vs real screenshot comparison | Shown after connect |
 | **P5** | Photo → catalog item | ✅ Complete |
 | **P5** | Buyer chat: prices, orders, Yoruba/Pidgin/English | ✅ Complete |
 | **Stretch** | Profile import from Instagram posts (opt-in) | If time |

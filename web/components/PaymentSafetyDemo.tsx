@@ -137,6 +137,15 @@ export function PaymentSafetyDemo() {
         </div>
       )}
 
+      <p className="mt-6 text-center">
+        <a
+          href="#steps"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Start selling
+        </a>
+      </p>
+
       {/* Trust Badges */}
       <div className="mt-6 grid grid-cols-3 gap-4 border-t border-border pt-6">
         <div className="text-center">

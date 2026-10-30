@@ -10,6 +10,7 @@ Internal routes (require `X-Internal-Token` unless noted):
 | GET | `/sellers/{id}/summary?date=` | Summary JSON for a WAT date |
 | POST | `/api/waitlist` | Add phone to WhatsApp waitlist (public, 201 or 409) |
 | POST | `/api/waitlist/notify` | Notify waitlist entry (501 stub) |
+| GET | `/api/instagram/status` | Public boolean: Instagram Login is configured. No token or id |
 | * | `/orders/...` | Order release helpers |
 
 Seller chat `/fake` / `/notfake` writes `fraud_signals` (hashed only); verify loads confirmed signals for R6.

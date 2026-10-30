@@ -27,6 +27,12 @@ class HealthResponse(BaseModel):
     provider: str
 
 
+class InstagramStatusResponse(BaseModel):
+    """Whether Instagram Login is configured. Never includes tokens or ids."""
+
+    ready: bool
+
+
 def create_app(
     settings: Settings | None = None,
     store: EchoStore | None = None,
@@ -60,6 +66,12 @@ def create_app(
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok", provider=resolved.llm_provider)
+
+    @app.get("/api/instagram/status", response_model=InstagramStatusResponse)
+    def instagram_status() -> InstagramStatusResponse:
+        token = resolved.instagram_access_token.strip()
+        account_id = resolved.instagram_account_id.strip()
+        return InstagramStatusResponse(ready=bool(token and account_id))
 
     @app.get("/privacy", response_class=HTMLResponse)
     def privacy() -> str:

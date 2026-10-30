@@ -2,23 +2,43 @@
 
 import { useState } from "react";
 
-export function InstagramConnect() {
-  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
+type Props = {
+  onConnected?: () => void;
+};
+
+type ConnectStatus = "idle" | "connecting" | "connected" | "error";
+
+export function InstagramConnect({ onConnected }: Props) {
+  const [status, setStatus] = useState<ConnectStatus>("idle");
   const [error, setError] = useState("");
 
-  const handleConnect = async () => {
+  async function handleConnect() {
     setStatus("connecting");
     setError("");
 
     try {
-      // Redirect to Instagram OAuth
-      // This would typically redirect to Meta's OAuth flow
-      window.location.href = "/api/auth/instagram";
-    } catch (err) {
+      const response = await fetch("/api/instagram/status");
+      if (!response.ok) {
+        setStatus("error");
+        setError("Could not reach Instagram status. Try again.");
+        return;
+      }
+      const body = (await response.json()) as { ready?: boolean };
+      if (body.ready === true) {
+        setStatus("connected");
+        onConnected?.();
+        return;
+      }
       setStatus("error");
-      setError("Failed to connect. Please try again.");
+      setError("Instagram Login is not configured on this server.");
+    } catch {
+      setStatus("error");
+      setError("Could not reach Instagram status. Try again.");
     }
-  };
+  }
+
+  const busy = status === "connecting";
+  const connected = status === "connected";
 
   return (
     <div className="rounded-xl border border-border bg-card p-8 text-center">
@@ -35,45 +55,27 @@ export function InstagramConnect() {
 
       <h3 className="mb-2 text-xl font-semibold">Connect Instagram</h3>
       <p className="mb-6 text-sm text-muted-foreground">
-        One click to connect your Instagram Business account. Sell-Safe will answer your DMs automatically.
+        One click to connect your Instagram Business account. Sell-Safe will answer your DMs
+        automatically.
       </p>
 
       <button
+        type="button"
         onClick={handleConnect}
-        disabled={status === "connecting"}
+        disabled={busy || connected}
         className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
-        {status === "connecting" ? (
-          <>
-            <svg
-              className="mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Connecting...
-          </>
-        ) : (
-          "Connect Instagram"
-        )}
+        {busy ? "Connecting..." : connected ? "Connected" : "Connect Instagram"}
       </button>
 
-      {status === "error" && (
-        <p className="mt-4 text-sm text-red-600">{error}</p>
-      )}
+      <p className="mt-4 text-sm" role="status" aria-live="polite">
+        {connected ? (
+          <span className="text-foreground">
+            Instagram connected. Sell-Safe can reply to your DMs.
+          </span>
+        ) : null}
+        {status === "error" ? <span className="text-red-600">{error}</span> : null}
+      </p>
 
       <p className="mt-4 text-xs text-muted-foreground">
         We only read messages you receive. We never post on your behalf.
