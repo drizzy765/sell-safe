@@ -35,6 +35,8 @@ def _system_prompt(
         f"Business: {business_name or 'the shop'}.",
         style,
         "You have access to the following tools. Use them when needed.",
+        "If a tool result includes crypto_instructions, copy that sentence exactly.",
+        "Do not invent a wallet address or a USDC amount.",
         json.dumps(tools, ensure_ascii=False),
     ]
     if order:

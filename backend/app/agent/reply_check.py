@@ -48,8 +48,9 @@ def check_reply(
     if any(phrase in lower for phrase in confirmed_phrases) and verdict != "CONFIRMED":
         raise ReplyCheckError("reply claims payment confirmed without CONFIRMED verdict")
 
-    # Do not expose full account numbers.
-    if re.search(r"\b\d{10,}\b", text):
+    # Do not expose full account numbers. Checksummed EVM wallets (0x + 40 hex) are allowed.
+    without_wallets = re.sub(r"0x[a-fA-F0-9]{40}", "", text)
+    if re.search(r"\b\d{10,}\b", without_wallets):
         raise ReplyCheckError("reply contains a long number that looks like an account number")
 
     return text

@@ -64,6 +64,15 @@ def _waitlist(request: Request) -> WaitlistStore:
     return current
 
 
+def _missing_table(exc: BaseException) -> bool:
+    text = str(exc)
+    code = getattr(exc, "code", None)
+    if isinstance(getattr(exc, "args", None), tuple) and exc.args and isinstance(exc.args[0], dict):
+        code = exc.args[0].get("code", code)
+        text = str(exc.args[0].get("message") or text)
+    return str(code) == "PGRST205" or "whatsapp_waitlist" in text and "schema cache" in text
+
+
 @router.post("/waitlist", response_model=WaitlistResponse, status_code=201)
 async def add_to_waitlist(body: WaitlistRequest, request: Request) -> WaitlistResponse:
     """Store a seller's WhatsApp number. Public: no internal token."""
@@ -74,6 +83,16 @@ async def add_to_waitlist(body: WaitlistRequest, request: Request) -> WaitlistRe
             status_code=409,
             detail="This number is already on the waitlist.",
         ) from None
+    except Exception as exc:
+        if _missing_table(exc):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "whatsapp_waitlist table is missing. "
+                    "Apply scripts/apply_pending_migrations.sql in the Supabase SQL editor."
+                ),
+            ) from None
+        raise
     return WaitlistResponse(message=WAITLIST_MESSAGE, phone_number=body.phone_number)
 
 

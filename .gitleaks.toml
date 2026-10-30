@@ -1,0 +1,12 @@
+# Allow public Base Sepolia USDC fixture addresses. Not secrets; gitleaks
+# still flags historical TOKEN= lines in PR commit ranges otherwise.
+title = "sell-safe"
+
+[allowlist]
+description = "Public Base Sepolia USDC contract in crypto unit tests"
+regexes = [
+  '''(?i)0x036CbD53842c5426634e7929541eC2318f3dCF7e''',
+]
+paths = [
+  '''backend/tests/unit/test_crypto_.*\.py''',
+]

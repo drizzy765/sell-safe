@@ -66,10 +66,13 @@ def test_confirmed_signal_from_seller_a_flags_seller_b() -> None:
     )
     assert inserted
     assert all(s["confirmed"] for s in inserted)
-    # Raw account never stored.
-    blob = repr(fraud.signals)
-    assert "9999" not in blob
-    assert "Scammer Sam" not in blob
+    # Raw account / name never stored (ignore UUID ids — they can contain "9999").
+    for signal in fraud.signals:
+        payload = {k: v for k, v in signal.items() if k != "id"}
+        blob = repr(payload)
+        assert "9999" not in blob
+        assert "Scammer Sam" not in blob
+        assert len(str(signal["value_hash"])) == 64
 
     # Seller B verifies matching extraction → R6.
     extraction = _extraction()

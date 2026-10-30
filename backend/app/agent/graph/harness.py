@@ -47,7 +47,14 @@ async def run_turn(
     state = await route(state, jev, seller_language)
 
     catalog_tools = CatalogTools(seller_id, catalog_store)
-    order_tools = OrderTools(seller_id, buyer_id, order_store)
+    seller = store.get_seller(seller_id) or {}
+    order_tools = OrderTools(
+        seller_id,
+        buyer_id,
+        order_store,
+        crypto_wallet=str(seller.get("crypto_wallet") or ""),
+        crypto_network=str(seller.get("crypto_network") or "base-sepolia"),
+    )
 
     if state.intent in ("price_question", "order", "chit_chat"):
         state = await sales_agent(state, provider, catalog_tools, order_tools, business_name)

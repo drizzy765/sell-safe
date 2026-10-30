@@ -798,21 +798,22 @@ We have 6 days. The foundation is solid. We can build everything.
 
 ## P10: Stretch (Nov 4, if time)
 
-### Task 34: Messenger or RefPay
+### Task 34: Direct Base USDC (replaces RefPay)
 
-**Description:** Pick one if everything else green. Messenger: adapter + webhook. RefPay: testnet USDC evidence, trust level 4.
+**Description:** Buyers pay USDC on Base. Sell-Safe verifies the tx hash over JSON-RPC. No RefPay. Messenger remains a separate stretch if time remains.
 
 **Acceptance criteria:**
-- [ ] Chosen path has test and manual demo
-- [ ] RefPay: cannot confirm wrong token or short confirmations
-- [ ] Messenger: reuses `InboundMessage` and verdict engine
-
-**Verification:**
-- [ ] Focused pytest for chosen integration
-- [ ] Other stretch left unbuilt
+- [x] Seller wallet saved as checksummed EVM address (optional, "Do this later")
+- [x] Checkout sentence includes wallet, USDC amount, order ref
+- [x] Buyer pastes tx hash → receipt success, correct token, seller `to`, amount, confirmations, unique hash, after order time
+- [x] CONFIRMED / PENDING / SUSPICIOUS map to the existing verdict model
+- [x] `crypto_payments` table with unique `tx_hash`
+- [x] Demo shows real Base Sepolia confirm vs reused hash
+- [x] Tests for each verification rule
 
 **Files:**
-- `backend/app/channels/messenger/adapter.py` or `backend/app/payments/crypto_refpay/`
+- `backend/app/payments/crypto/`
+- `backend/app/db/migrations/0006_crypto_payments.sql`
 
 **Estimated:** Medium
 

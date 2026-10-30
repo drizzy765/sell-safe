@@ -11,6 +11,8 @@ Internal routes (require `X-Internal-Token` unless noted):
 | POST | `/api/waitlist` | Add phone to WhatsApp waitlist (public, 201 or 409) |
 | POST | `/api/waitlist/notify` | Notify waitlist entry (501 stub) |
 | GET | `/api/instagram/status` | Public boolean: Instagram Login is configured. No token or id |
+| POST | `/api/sellers/crypto-wallet` | Save checksummed seller USDC wallet (optional onboarding) |
+| GET | `/api/demo/crypto` | Live Base Sepolia: real / reused / fake hash verdicts (`DEMO_REAL_TX_HASH`) |
 | * | `/orders/...` | Order release helpers |
 
 Seller chat `/fake` / `/notfake` writes `fraud_signals` (hashed only); verify loads confirmed signals for R6.

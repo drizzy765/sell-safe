@@ -4,7 +4,7 @@
 | Level | Layer | Source | Notes |
 |---|---|---|---|
 | 4 | Virtual account webhook | Paystack DVA `charge.success` / Flutterwave `charge.completed` | Signature-verified, then re-fetched via provider verify API. Strongest. |
-| 4 | On-chain (optional) | RefPay / RPC: tx hash on Base Sepolia or Solana devnet, USDC | Check recipient, token contract, amount, confirmations ≥ N. |
+| 4 | On-chain USDC | Direct JSON-RPC on Base (default Base Sepolia): buyer pastes tx hash | Receipt success; Transfer from `CRYPTO_TOKEN_CONTRACT`; `to` = seller wallet; amount ≥ order USDC (6 decimals); confirmations ≥ `CRYPTO_MIN_CONFIRMATIONS`; `tx_hash` unique; block time after order. No RefPay. |
 | 3 | Mono open banking (optional) | Sandbox account transactions | Credit matching amount & time window. |
 | 2 | Forwarded bank alert | Seller forwards SMS/email | Parsed; spoofable, so only trusted if forwarded by the seller's registered number/email and format matches bank template. |
 | 1 | Screenshot only | Buyer image | Can never confirm alone → `UNVERIFIED` at best. |

@@ -10,6 +10,7 @@ Base: `https://<host>`. JSON. Internal endpoints require `Authorization: Bearer 
 | POST | `/webhooks/messenger` | Messenger | same |
 | POST | `/webhooks/paystack` | `charge.success`, DVA events | `x-paystack-signature` |
 | POST | `/webhooks/flutterwave` | `charge.completed` | `verif-hash` |
+| (DM text) | Instagram / WhatsApp inbound | Buyer pastes `0x` tx hash → on-chain USDC check | channel signature |
 | POST | `/webhooks/alerts/email` | inbound email of forwarded bank alerts (e.g. via email-forwarding service) | shared secret |
 Rules: respond `200` within 2 s, process async (background task/queue); dedupe by event/message id.
 
@@ -26,7 +27,8 @@ Rules: respond `200` within 2 s, process async (background task/queue); dedupe b
 | GET | `/orders/{ref}` | – | order + payments + latest verdict |
 | POST | `/orders/{ref}/release` | `{confirm:true}` | order (status released) – 409 if verdict not release_allowed and no override |
 | POST | `/payments/{id}/verify` | `{evidence_id?}` | verdict |
-| POST | `/payments/{id}/crypto` | `{tx_hash, chain}` | verdict |
+| POST | `/api/sellers/crypto-wallet` | `{address}` checksummed EVM | `{address, network}` (optional onboarding; "Do this later" allowed) |
+| GET | `/api/demo/crypto` | – | live `{ready, cases:[real, reused, fake]}` from `DEMO_REAL_TX_HASH` (or a clear message if unset) |
 | POST | `/alerts/sms` | `{seller_id, text, received_at}` (from Android forwarder) | evidence |
 | POST | `/fraud/report` | `{evidence_id, kind}` | signal |
 | GET | `/sellers/{id}/summary` | `?date=` | `{orders, paid_kobo, fakes_caught, naira_saved_kobo}` |

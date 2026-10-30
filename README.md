@@ -45,9 +45,10 @@ The LLM phrases replies. Only the deterministic verification engine sets verdict
 | **P4** | Payment safety demo: fake vs real screenshot comparison | Shown after connect |
 | **P5** | Photo → catalog item | ✅ Complete |
 | **P5** | Buyer chat: prices, orders, Yoruba/Pidgin/English | ✅ Complete |
+| **P0** | USDC on Base: paste tx hash → on-chain verify (no RefPay) | In tree (Base Sepolia default) |
 | **Stretch** | Profile import from Instagram posts (opt-in) | If time |
 | **Stretch** | Chat-style onboarding | If time |
-| **Cut** | Voice transcription, fraud memory, daily summary, Messenger | Post-hackathon |
+| **Stretch** | Messenger adapter | If time |
 
 ---
 
@@ -77,7 +78,7 @@ The LLM phrases replies. Only the deterministic verification engine sets verdict
 - **Database:** Supabase Postgres with RLS
 - **Storage:** Supabase Storage (private buckets)
 - **Channels:** Instagram Messaging API (working), WhatsApp Cloud API (blocked, waitlist active)
-- **Payments:** Paystack test mode, Flutterwave backup
+- **Payments:** Paystack test mode; USDC on Base via direct JSON-RPC (default Base Sepolia). Flutterwave/Mono/RefPay not used.
 - **Speech:** Intron Sahara v2.5 (stretch)
 - **Frontend:** Next.js on Vercel (onboarding site)
 - **Hosting:** Render or Railway (API)
@@ -126,6 +127,7 @@ cp .env.example .env        # fill values locally; NEVER commit .env
 # backend/app/db/migrations/0003_traces.sql
 # backend/app/db/migrations/0004_evidence_hashes.sql
 # backend/app/db/migrations/0005_whatsapp_waitlist.sql
+# backend/app/db/migrations/0006_crypto_payments.sql
 
 uvicorn app.main:app --reload --port 8000
 
