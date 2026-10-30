@@ -1,32 +1,27 @@
-# Sell-Safe Task List — Revised Priority Order
+# Sell-Safe Task List — Full Feature Set
 
 **Status:** Oct 30, 2026. Foundation complete. Payment verification is P0.
 **Deadline:** Nov 5, 02:00 WAT.
+**Belief:** We can finish everything. Nothing is cut.
 
 Standing checks for every code task: `ruff check . && ruff format --check .`, `pytest -q -m "not live"`, Conventional Commit, no secrets.
 
 ---
 
-## Changes from Previous Plan
+## Philosophy: Nothing Is Cut
 
-**New priority order:**
-1. **P0: Payment verification** — Elevated to critical path (was Phase 4, now must complete first)
-2. **P1: WhatsApp waitlist** — Collect WhatsApp numbers, not email; notify on unblock
-3. **P2: Simplified Instagram** — One button, hide 7 technical steps
-4. **P3: Sample reply demo** — Prove value before asking for work
-5. **P4: Payment safety demo** — Fake vs real screenshot, build trust
-6. **P5: Stretch only** — Profile import, chat onboarding, draft catalog
+We have 6 days. The foundation is solid. We can build everything.
 
-**Removed/cut:**
-- Voice transcription (cut)
-- Fraud memory (stretch only)
-- Daily summary (stretch only)
-- Messenger adapter (cut)
-- Full 7-step technical onboarding (replaced with one-click)
+**Priority order:**
+1. **P0:** Payment verification (must work flawlessly)
+2. **P1-P4:** Onboarding improvements (waitlist, simplified connect, demos)
+3. **P5:** Everything else (bank alerts, evals, voice, fraud memory, reminders)
+
+**If time gets tight:** Defer P5 features, but try to build them all.
 
 ---
 
-## P0: Payment Verification (Oct 30-31) — MUST COMPLETE
+## P0: Payment Verification (Oct 30-31) — MUST COMPLETE FIRST
 
 ### Task 15: Receipt extraction and image hashes
 
@@ -401,171 +396,449 @@ Standing checks for every code task: `ruff check . && ruff format --check .`, `p
 
 ---
 
-## P5: Stretch (Nov 2, only if P0-P4 solid)
+## P5: Verification V2 (Nov 2)
 
-### Task STRETCH-1: Profile import (opt-in)
+### Task 21: Forwarded bank-alert parser
 
-**Description:** Fetch recent Instagram posts, extract products, show "approve/edit/skip."
-
-**Constraints:**
-- Opt-in only
-- Recent public posts only
-- Nothing goes live without approval
-- Frame as "organizing your catalog," not "watching you"
-
-**Files:**
-- `backend/app/instagram/import.py`
-- `web/components/ProfileImport.tsx`
-
-**Estimated:** Medium
-
----
-
-### Task STRETCH-2: Chat-style onboarding
-
-**Description:** Conversational flow, pre-fill from profile, policies one at a time.
-
-**Features:**
-- [ ] "Do this later" on every step
-- [ ] Smart defaults based on business type
-- [ ] Partial setup flag
-
-**Files:**
-- `web/components/ChatOnboarding.tsx`
-
-**Estimated:** Medium
-
----
-
-### Task STRETCH-3: Draft catalog from posts
-
-**Description:** Approve/edit/skip UI for imported products.
-
-**Features:**
-- [ ] Grid of suggested products
-- [ ] Edit name, price, description
-- [ ] Skip (don't add)
-- [ ] Bulk approve
-
-**Files:**
-- `web/components/DraftCatalog.tsx`
-
-**Estimated:** Medium
-
----
-
-### Checkpoint: Stretch Complete
-- [ ] Profile import works (opt-in)
-- [ ] Chat onboarding smooth
-- [ ] Draft catalog functional
-
----
-
-## Phase 7: Freeze and Submit (Nov 2-4)
-
-### Task FREEZE-1: Feature freeze
-
-**Description:** Tag `v0.1-demo`, lock eval datasets.
+**Description:** Parse seller-forwarded SMS or email into structured evidence. GTB, Access, OPay formats. Trust level 2.
 
 **Acceptance criteria:**
-- [ ] Tag `v0.1-demo` created
-- [ ] No new features after 23:59 WAT Nov 2
-- [ ] Deployed URL stable
+- [ ] Credit and debit fixtures parse to kobo and UTC timestamps
+- [ ] Buyer-originated alert not stored as seller evidence
+- [ ] `POST /alerts/sms` requires secret
+
+**Verification:**
+- [ ] Fixture tests in `evals/fixtures/` and `backend/tests/unit/test_alerts.py`
+- [ ] Matcher can link level-2 alert to order
+
+**Files:**
+- `backend/app/payments/alerts/parse.py`
+- `backend/app/api/webhooks/alerts.py`
+- `evals/fixtures/bank_alerts.txt`
+- `backend/tests/unit/test_alerts.py`
+
+**Estimated:** Medium
+
+---
+
+### Task 22: Jev tamper and match scores
+
+**Description:** Ask `receipt_tampered` and `evidence_match`. `confidence = p_match * (1 - max(p_tamper, rule_risk))`.
+
+**Acceptance criteria:**
+- [ ] Formula matches `docs/payment_verification.md`
+- [ ] Missing Jev scores don't upgrade verdict to CONFIRMED
+- [ ] Scores stored on `verdicts.jev_scores`
+
+**Verification:**
+- [ ] Unit tests for three bands and Jev outage
+- [ ] Question ids match `docs/agent.md`
+
+**Files:**
+- `backend/app/decisions/questions.py`
+- `backend/app/verification/verdict.py`
+- `backend/tests/unit/test_confidence.py`
 
 **Estimated:** Small
 
 ---
 
-### Task DEMO-1: Seed demo data
+### Task 23: Seller verdict card + human-in-the-loop
 
-**Description:** `python -m scripts.seed_demo` loads Tolu's Bags scenario.
+**Description:** Seller receives verdict template. Confidence 0.60–0.90 waits for `/release` or rejection. NOT FOUND rechecks for 30 min. Reminders max 2.
+
+**Acceptance criteria:**
+- [ ] Mid-band confidence never sets `release_allowed` until seller accepts
+- [ ] Late matching webhook flips NOT FOUND to CONFIRMED
+- [ ] Reminder count stops at 2
+
+**Verification:**
+- [ ] Integration test with clock fixture for 30-min window
+- [ ] Seller command resumes stored checkpoint
+
+**Files:**
+- `backend/app/agent/graph/verify.py`
+- `backend/app/agent/templates.py`
+- `backend/app/jobs/recheck.py`
+- `backend/tests/integration/test_recheck.py`
+
+**Estimated:** Medium
+
+---
+
+### Task 24: Eval runner and synthetic set v1
+
+**Description:** `python -m evals.run` scores extraction and verdicts. v1 set: 20+ synthetic images, `labels.jsonl`.
+
+**Acceptance criteria:**
+- [ ] Report at `evals/report.md` includes confusion matrix
+- [ ] Fake labelled class returning CONFIRMED fails the run
+- [ ] Real-derived images in `evals/data/private/` (gitignored)
+
+**Verification:**
+- [ ] `python -m evals.run` exits 0 on synthetic set
+- [ ] Fixture forcing CONFIRMED on fake fails gate
+
+**Files:**
+- `evals/run.py`
+- `evals/data/synthetic/labels.jsonl`
+- `evals/gen_receipts.py`
+- `backend/tests/unit/test_eval_gate.py`
+
+**Estimated:** Medium
+
+---
+
+### Checkpoint: After Tasks 21-24
+- [ ] Bank alerts parse correctly
+- [ ] Jev scores integrated
+- [ ] Human-in-the-loop for mid-confidence
+- [ ] Eval runner passes synthetic set
+- [ ] Review with human before P6
+
+---
+
+## P6: Fraud + Ops (Nov 2-3)
+
+### Task 28: Scammer memory
+
+**Description:** Seller command `/fake SS-1042` inserts confirmed `fraud_signals`. `/notfake` disputes. Only `confirmed=true` triggers R6.
+
+**Acceptance criteria:**
+- [ ] Confirmed signal from seller A flags seller B's matching evidence
+- [ ] Unconfirmed signals don't add R6
+- [ ] Raw account numbers stored only as hashes
+
+**Verification:**
+- [ ] Unit test across two seller ids
+- [ ] Manual: repeat scammer flagged, clip saved
+
+**Files:**
+- `backend/app/verification/fraud.py`
+- `backend/app/agent/graph/seller_cmd.py`
+- `backend/tests/unit/test_fraud_signals.py`
+
+**Estimated:** Medium
+
+---
+
+### Task 29: Payment reminders and daily summary
+
+**Description:** Cron endpoints `POST /jobs/reminders` and `POST /jobs/daily-summary`. Max 2 reminders. Summary includes ₦ saved.
+
+**Acceptance criteria:**
+- [ ] Unpaid orders get at most two reminders
+- [ ] Summary counts SUSPICIOUS/NOT FOUND with goods held, no later CONFIRMED within 48h
+- [ ] Both routes reject missing internal token
+
+**Verification:**
+- [ ] Unit tests for naira-saved query and reminder cap
+- [ ] Manual summary message on test number
+
+**Files:**
+- `backend/app/jobs/reminders.py`
+- `backend/app/jobs/daily_summary.py`
+- `backend/app/api/internal/jobs.py`
+- `backend/tests/unit/test_daily_summary.py`
+
+**Estimated:** Medium
+
+---
+
+### Checkpoint: After Tasks 28-29
+- [ ] Repeat scammer flagged across sellers
+- [ ] Daily summary includes ₦ saved
+- [ ] Review with human before P7
+
+---
+
+## P7: Voice + Channels (Nov 3)
+
+### Task 27: Voice-note transcription
+
+**Description:** Audio messages call Intron Sahara STT (Yoruba-English `yo`, Pidgin-English `pcm`, English `en`). Transcript stored, re-enters graph as text.
+
+**Acceptance criteria:**
+- [ ] Voice note with fake transcript can search catalog and create order
+- [ ] Transcription failure replies "please type that" template
+- [ ] Audio bytes not logged
+
+**Verification:**
+- [ ] Unit test with fake Intron client (no live call, no audio in logs)
+- [ ] Manual voice note on Instagram
+
+**Files:**
+- `backend/app/speech/` (Intron STT/TTS client)
+- `backend/app/agent/graph/nodes.py`
+- `backend/tests/unit/test_voice_note.py`
+
+**Estimated:** Small
+
+---
+
+### Checkpoint: After Task 27
+- [ ] Voice note transcribed (yo, pcm, en)
+- [ ] Order flow works with voice
+- [ ] Review with human before P8
+
+---
+
+## P8: Demo + Freeze (Nov 2-4)
+
+### Task 25: Demo storyboard draft
+
+**Description:** Write 2:45 storyboard: hook, catalog, Pidgin order, fake caught, webhook confirmed, close.
+
+**Acceptance criteria:**
+- [ ] Each scene has visual and voiceover line
+- [ ] Runtime ≤3 minutes
+- [ ] No real phone numbers or account numbers
+
+**Verification:**
+- [ ] Script read aloud once
+- [ ] Saved under `demo/`
+
+**Files:**
+- `demo/storyboard.md`
+
+**Estimated:** Small (human)
+
+---
+
+### Task 30: Onboarding site polish
+
+**Description:** Finish `web/`: platform tabs, copy buttons, theme. Remove TODOs, verify against current Meta docs.
+
+**Acceptance criteria:**
+- [ ] `/`, `/?platform=instagram` show correct steps
+- [ ] Copy control announces "Copied"
+- [ ] Light/dark/system themes work
+
+**Verification:**
+- [ ] `npm run lint && npm run build` in `web/`
+- [ ] Keyboard tab change works
+
+**Files:**
+- `web/app/page.tsx`
+- `web/components/PlatformTabs.tsx`
+- `web/components/StepCard.tsx`
+- `web/content/whatsapp.ts`
+- `web/content/instagram.ts`
+- `web/content/messenger.ts`
+
+**Estimated:** Medium
+
+---
+
+### Task 31: Rough demo recording
+
+**Description:** Screen recording: catalog, Pidgin order, suspicious screenshot, webhook confirmation.
+
+**Acceptance criteria:**
+- [ ] All four beats visible
+- [ ] No live customer data
+- [ ] Notes on reshoots written
+
+**Verification:**
+- [ ] Clip plays locally
+- [ ] Storyboard gaps listed
+
+**Files:**
+- `demo/storyboard.md`
+
+**Estimated:** Small (human)
+
+---
+
+### Task 32: Status, FAQ, privacy
+
+**Description:** Finish `/status`, `/faq`, `/privacy`. Status: idle, checking, connected, failed. Mobile-first, accessible.
+
+**Acceptance criteria:**
+- [ ] `/status` shows connected and failed, links to FAQ
+- [ ] `/privacy` lists stored data in plain language
+- [ ] Below 640px: one column, code blocks scroll
+
+**Verification:**
+- [ ] Browser pass: desktop + narrow viewport
+- [ ] `npm run build` succeeds
+
+**Files:**
+- `web/app/status/page.tsx`
+- `web/app/faq/page.tsx`
+- `web/app/privacy/page.tsx`
+- `web/components/StatusCheck.tsx`
+
+**Estimated:** Medium
+
+---
+
+### Task 33: Deploy and tag v0.1-demo
+
+**Description:** API on Render/Railway. Site on Vercel. Secrets in host env only. Tag `v0.1-demo`.
+
+**Acceptance criteria:**
+- [ ] Public `/health` returns ok
+- [ ] Instagram webhook on deployed URL works
+- [ ] Tag `v0.1-demo` exists
+
+**Verification:**
+- [ ] Fresh test message on deployed bot
+- [ ] No secrets in build logs
+
+**Files:**
+- `README.md`
+
+**Estimated:** Medium
+
+---
+
+### Task 35: Seed demo data
+
+**Description:** `python -m scripts.seed_demo` loads Tolu's Bags, products, buyers, scammer scenario.
 
 **Acceptance criteria:**
 - [ ] Idempotent
 - [ ] Amounts match demo doc
 - [ ] Refuses to run in production without flag
 
+**Verification:**
+- [ ] Unit test of seed payload
+- [ ] Running twice doesn't duplicate
+
 **Files:**
 - `scripts/seed_demo.py`
+- `backend/tests/unit/test_seed_demo.py`
 
 **Estimated:** Small
 
 ---
 
-### Task DEMO-2: Final video
+### Task 36: Final video
 
-**Description:** Two takes, edit, captions, ≤3 minutes.
-
-**Scenes:**
-1. Product photo → catalog item
-2. Pidgin price question → order
-3. Fake screenshot → SUSPICIOUS
-4. Real webhook → CONFIRMED
+**Description:** Two takes, edit, captions, 1080p, ≤3 minutes, unlisted YouTube/Loom.
 
 **Acceptance criteria:**
-- [ ] ≤3 minutes
-- [ ] Logged-out viewable
+- [ ] Logged-out browser can view
+- [ ] Fake receipt and real payment on screen
 - [ ] No real account numbers
+
+**Verification:**
+- [ ] Watch in private window
+- [ ] Link in submission notes
+
+**Files:**
+- `demo/storyboard.md`
 
 **Estimated:** Small (human)
 
 ---
 
-### Task SUBMIT-1: Final README and screenshots
+### Checkpoint: After Tasks 25, 30-33, 35-36
+- [ ] Feature freeze at 23:59 WAT Nov 2
+- [ ] Tag `v0.1-demo`
+- [ ] Deployed URL stable
+- [ ] Demo video ≤3 minutes
+- [ ] Demo seller and products exist
 
-**Description:** README, screenshots, architecture, pre-submit tests.
+---
+
+## P9: Submit (Nov 4)
+
+### Task 37: README, screenshots, pre-submit tests
+
+**Description:** Public README: pitch, setup, architecture. Screenshots: catalog, Pidgin, Yoruba, SUSPICIOUS, CONFIRMED, summary.
 
 **Acceptance criteria:**
-- [ ] Fresh order → CONFIRMED
-- [ ] Fake screenshot → SUSPICIOUS, 409
+- [ ] Fresh order → test pay → CONFIRMED
+- [ ] Fake screenshot → SUSPICIOUS, release 409
 - [ ] Duplicate webhook → 200, one row
 - [ ] `pytest`, evals, gitleaks green
+
+**Verification:**
+- [ ] `docs/hackathon_launch.md` checklist ticked
+- [ ] README setup commands match repo
 
 **Files:**
 - `README.md`
 - `docs/hackathon_launch.md`
+- `web/public/screenshots/`
 
 **Estimated:** Medium
 
 ---
 
-### Task SUBMIT-2: Submit
+### Task 38: Submit and tag v1.0-submission
 
-**Description:** Submit by 18:00 WAT, tag `v1.0-submission`.
+**Description:** Submit Indie track by 18:00 WAT. Save confirmation. Tag `v1.0-submission`.
 
 **Acceptance criteria:**
 - [ ] Repo public, MIT license
-- [ ] Confirmation saved
-- [ ] Tag exists on submitted commit
+- [ ] Write-up uses measured numbers only
+- [ ] Confirmation saved (outside repo if personal data)
+
+**Verification:**
+- [ ] Submission page shows received
+- [ ] Tag on submitted commit
+
+**Files:**
+- `README.md`
+- `LICENSE`
 
 **Estimated:** Small (human)
 
 ---
 
-## Cut List (If Behind Schedule)
-
-**Cut in this order:**
-1. Draft catalog from posts (P5)
-2. Chat-style onboarding (P5)
-3. Profile import (P5)
-4. Voice transcription (already cut)
-5. Fraud memory (already cut)
-6. Daily summary (already cut)
-7. Payment reminders (already cut)
-8. Messenger adapter (already cut)
-9. Web onboarding beyond one page (keep simple)
-
-**Never cut:**
-- Payment verification (Tasks 15-20)
-- Sample reply demo
-- Payment safety demo
-- Simplified Instagram connect
-- WhatsApp waitlist
-- Demo video
+### Checkpoint: After Tasks 37-38
+- [ ] Submitted by 18:00 WAT
+- [ ] Confirmation saved
+- [ ] Tests, evals, gitleaks green on tag
 
 ---
 
-## Design Principles (New)
+## P10: Stretch (Nov 4, if time)
+
+### Task 34: Messenger or RefPay
+
+**Description:** Pick one if everything else green. Messenger: adapter + webhook. RefPay: testnet USDC evidence, trust level 4.
+
+**Acceptance criteria:**
+- [ ] Chosen path has test and manual demo
+- [ ] RefPay: cannot confirm wrong token or short confirmations
+- [ ] Messenger: reuses `InboundMessage` and verdict engine
+
+**Verification:**
+- [ ] Focused pytest for chosen integration
+- [ ] Other stretch left unbuilt
+
+**Files:**
+- `backend/app/channels/messenger/adapter.py` or `backend/app/payments/crypto_refpay/`
+
+**Estimated:** Medium
+
+---
+
+## Summary Table
+
+| Phase | Tasks | Timeline | Status |
+|---|---|---|---|
+| P0 | 15-20 | Oct 30-31 | ⏸️ Not started |
+| P1 | WA 1-4 | Nov 1 | ⏸️ Not started |
+| P2 | IG 1-2 | Nov 1 | ⏸️ Not started |
+| P3 | DEMO 1-3 | Nov 1 | ⏸️ Not started |
+| P4 | SAFE 1-3 | Nov 1-2 | ⏸️ Not started |
+| P5 | 21-24 | Nov 2 | ⏸️ Not started |
+| P6 | 28-29 | Nov 2-3 | ⏸️ Not started |
+| P7 | 27 | Nov 3 | ⏸️ Not started |
+| P8 | 25, 30-33, 35-36 | Nov 2-3 | ⏸️ Not started |
+| P9 | 37-38 | Nov 4 | ⏸️ Not started |
+| P10 | 34 | Nov 4 (if time) | ⏸️ Not started |
+
+**Total:** ~38 tasks in 6 days = ~6 tasks/day
+
+---
+
+## Design Principles (All Tasks)
 
 1. **Hide all technical complexity.** No visible Meta app IDs, webhook URLs, verify tokens.
 2. **Feel like a helpful assistant, not a form.** Conversational, warm.
@@ -584,3 +857,16 @@ Standing checks for every code task: `ruff check . && ruff format --check .`, `p
 - New env names in `.env.example` only
 - No secrets, real phone numbers, or real receipts
 - User-visible work saves a clip under `demo/clips/`
+
+---
+
+## Final Note
+
+**Nothing is cut. Everything is possible. We have 6 days. Let's build.**
+
+- Oct 30-31: Payment verification (P0)
+- Nov 1: Onboarding (P1-P4)
+- Nov 2: Verification V2 + Freeze (P5)
+- Nov 3: Voice + Ops + Video (P6-P8)
+- Nov 4: Submit (P9)
+- Nov 4 (if time): Stretch (P10)

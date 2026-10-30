@@ -8,6 +8,8 @@ Sell-Safe is a **payment safety layer** for Nigerian small sellers on Instagram 
 
 **Deadline:** Nov 5, 02:00 WAT (hard stop). Feature freeze: Nov 2, 23:59 WAT.
 
+**Belief:** We can finish everything before the deadline. Nothing is cut.
+
 ---
 
 ## Changes from Previous Plan
@@ -15,11 +17,11 @@ Sell-Safe is a **payment safety layer** for Nigerian small sellers on Instagram 
 | Aspect | Before | Now |
 |---|---|---|
 | **Primary channel** | WhatsApp-first | Instagram-first (WhatsApp locked) |
-| **Onboarding** | 7 technical Meta steps | One "Connect Instagram" button; hide complexity |
+| **Onboarding** | 7 technical Meta steps | One "Connect Instagram" button + sample reply demo first |
 | **WhatsApp** | Full setup guide | "Coming Soon" waitlist with phone number capture |
-| **Core feature** | Same priority | Elevated to P0: payment verification must be flawless |
-| **Value demonstration** | Happens after setup | Sample reply demo *before* seller does any work |
-| **Safety demo** | None | New: fake vs real screenshot comparison |
+| **Core feature** | Same priority | **P0:** Payment verification must be flawless |
+| **Other features** | Many marked CUT | **All restored** — nothing cut, build if time permits |
+| **Value demonstration** | After setup | Before setup — sample reply + safety demo |
 
 ---
 
@@ -59,20 +61,28 @@ settings + /health + CI ✓
                          │
                          ├── Paystack webhook (level 4) → CONFIRMED
                          ├── bank alert (level 2) → seller decides
-                         └── evidence matching → verdict
+                         ├── evidence matching → verdict
+                         └── fraud signals (R6) → blocklist
 
 web/ onboarding (P1-P4)
     ├── WhatsApp waitlist (phone number capture)
     ├── Simplified Instagram connect (one button)
     ├── Sample reply demo (prove value first)
-    └── Payment safety demo (fake vs real)
+    ├── Payment safety demo (fake vs real)
+    └── Chat onboarding (stretch)
+
+ops/ (P5, if time)
+    ├── Voice transcription (Intron STT)
+    ├── Fraud memory (cross-seller blocklist)
+    ├── Payment reminders
+    └── Daily summary
 ```
 
 ---
 
-## New Priority Order
+## Priority Order (Nothing Cut)
 
-### P0: Payment Verification (Tasks 15-20)
+### P0: Payment Verification (Tasks 15-20) — MUST COMPLETE FIRST
 **The core promise. Must work flawlessly.**
 
 | Task | What | Why Critical |
@@ -90,6 +100,8 @@ web/ onboarding (P1-P4)
 - Edited amount → NOT FOUND → release blocked
 - No path confirms from screenshot alone
 
+**Timeline:** Oct 30-31 (2 days)
+
 ---
 
 ### P1: WhatsApp Waitlist
@@ -98,9 +110,11 @@ web/ onboarding (P1-P4)
 |---|---|
 | UI | "WhatsApp coming soon — get notified" card with phone input |
 | Backend | `POST /api/waitlist` stores `{whatsapp_number, created_at}` |
-| Future | `POST /api/waitlist/notify` sends WhatsApp message with one-tap connect link |
+| Future | `POST /api/waitlist/notify` sends WhatsApp message with connect link (stub) |
 
-**Why WhatsApp number, not email:** Nigerian sellers live on WhatsApp. When it's unblocked, we message them where they already are.
+**Why WhatsApp number, not email:** Nigerian sellers live on WhatsApp.
+
+**Timeline:** Nov 1 (1 day)
 
 ---
 
@@ -111,9 +125,10 @@ web/ onboarding (P1-P4)
 | 7 technical steps with Meta app IDs | One "Connect Instagram" button |
 | Webhook URL, verify token, permissions | OAuth flow handles it |
 | Code blocks to copy | Automatic configuration |
-| "Link to Facebook Page" | Handled by Instagram Login API |
 
 **Technical steps hidden behind:** "Advanced setup (for developers)" link
+
+**Timeline:** Nov 1 (1 day, parallel with P1)
 
 ---
 
@@ -121,12 +136,12 @@ web/ onboarding (P1-P4)
 
 | Flow | Description |
 |---|---|
-| Step 1 | Seller connects Instagram, Sell-Safe reads one product from their profile |
+| Step 1 | Seller connects Instagram, Sell-Safe reads one product |
 | Step 2 | Mock customer asks: "How much for the [product name]?" |
-| Step 3 | LLM generates reply using seller's actual product, price, and tone |
-| Step 4 | Seller sees: "This is how Sell-Safe would reply to your customers" |
+| Step 3 | LLM generates reply using seller's actual product |
+| Step 4 | Seller sees: "This is how Sell-Safe would reply" |
 
-**Value proposition:** Prove it works before asking for business details.
+**Timeline:** Nov 1 (1 day, parallel with P1-P2)
 
 ---
 
@@ -134,23 +149,33 @@ web/ onboarding (P1-P4)
 
 | Screen | Content |
 |---|---|
-| Left side | Fake transfer screenshot (edited amount: ₦50,000 → ₦20,000) |
+| Left side | Fake transfer screenshot (edited amount) |
 | Right side | Real bank alert from Paystack |
 | Verdicts | SUSPICIOUS vs CONFIRMED |
-| Explanation | "Sell-Safe checks every screenshot against real bank data" |
 
-**Builds trust:** Shows the problem and the solution.
+**Timeline:** Nov 1 (1 day, parallel with P1-P3)
 
 ---
 
-### P5: Stretch (Only if P0-P4 Are Solid)
+### P5: All Remaining Features (Nothing Cut)
 
-| Feature | Description |
-|---|---|
-| Profile import | Fetch recent Instagram posts, extract products, show "approve/edit/skip" |
-| Chat onboarding | Conversational flow, pre-fill from profile, policies one at a time |
-| Draft catalog | Public posts only, opt-in, nothing live without approval |
-| "Do this later" | Every step has skip option; partial setup flag |
+**If P0-P4 solid by Nov 1, build everything:**
+
+| Task | Feature | Timeline |
+|---|---|---|
+| 21 | Bank alert parser | Nov 2 morning |
+| 22 | Jev tamper scores | Nov 2 morning |
+| 23 | Human-in-the-loop | Nov 2 afternoon |
+| 24 | Eval runner | Nov 2 afternoon |
+| 25 | Demo storyboard | Nov 2 evening |
+| 27 | Voice transcription | Nov 3 morning |
+| 28 | Fraud memory | Nov 3 afternoon |
+| 29 | Reminders + daily summary | Nov 3 afternoon |
+| 30 | Onboarding polish | Nov 4 morning |
+| 32 | Web finish (status, FAQ) | Nov 4 morning |
+| 34 | Messenger/RefPay (stretch) | Nov 4 if time |
+
+**Timeline:** Nov 2-4 (3 days)
 
 ---
 
@@ -173,63 +198,144 @@ web/ onboarding (P1-P4)
 
 ---
 
-### Phase 5: WhatsApp Waitlist (Nov 1) — P1
+### Phase 5: Onboarding Improvements (Nov 1) — P1-P4
 
-- [ ] Add waitlist table to schema
-- [ ] Build waitlist UI component (phone number input)
-- [ ] `POST /api/waitlist` endpoint
-- [ ] Update platform tabs: WhatsApp shows "Coming soon"
+**P1: WhatsApp Waitlist**
+- [ ] Task WA-1: Waitlist schema
+- [ ] Task WA-2: Waitlist UI component
+- [ ] Task WA-3: Waitlist API endpoint
+- [ ] Task WA-4: Future notification endpoint (stub)
+
+**P2: Simplified Instagram**
+- [ ] Task IG-1: Replace 7-step guide with one-click OAuth
+- [ ] Task IG-2: Hide technical steps behind "Advanced setup"
+
+**P3: Sample Reply Demo**
+- [ ] Task DEMO-1: Mock customer message generator
+- [ ] Task DEMO-2: Live reply preview
+- [ ] Task DEMO-3: Demo state management
+
+**P4: Payment Safety Demo**
+- [ ] Task SAFE-1: Fake screenshot fixture
+- [ ] Task SAFE-2: Demo UI component
+- [ ] Task SAFE-3: Demo verdict endpoint
+
+**Checkpoint:**
+- [ ] WhatsApp waitlist captures phone numbers
+- [ ] Instagram connect is one click
+- [ ] Sample reply demo shows value
+- [ ] Payment safety demo builds trust
 
 ---
 
-### Phase 6: Simplified Onboarding (Nov 1) — P2-P4
+### Phase 6: Verification V2 (Nov 2) — P5
 
-- [ ] Replace 7-step Instagram guide with one-click OAuth
-- [ ] Sample reply demo component
-- [ ] Payment safety demo component
-- [ ] Update onboarding copy to match principles
+- [ ] Task 21: Forwarded bank-alert parser
+- [ ] Task 22: Jev tamper and match scores
+- [ ] Task 23: Seller verdict card + human-in-the-loop
+- [ ] Task 24: Eval runner and synthetic set v1
+
+**Checkpoint:**
+- [ ] Bank alerts parse correctly
+- [ ] Jev scores integrated
+- [ ] Human-in-the-loop for mid-confidence
+- [ ] Eval runner passes synthetic set
 
 ---
 
-### Phase 7: Freeze and Demo (Nov 2-4)
+### Phase 7: Fraud + Ops (Nov 2-3) — P5
 
-- [ ] Tag `v0.1-demo`
-- [ ] Seed demo data
-- [ ] Record video (two takes, edit, captions)
-- [ ] Final README, screenshots
-- [ ] Submit
+- [ ] Task 28: Scammer memory (fraud signals)
+- [ ] Task 29: Payment reminders and daily summary
+
+**Checkpoint:**
+- [ ] Fraud signals block repeat scammers
+- [ ] Daily summary calculates ₦ saved
+
+---
+
+### Phase 8: Voice + Channels (Nov 3) — P5
+
+- [ ] Task 27: Voice-note transcription (Intron STT)
+
+**Checkpoint:**
+- [ ] Voice notes transcribed (yo, pcm, en)
+- [ ] Order flow works with voice
+
+---
+
+### Phase 9: Freeze and Demo (Nov 2-4)
+
+- [ ] Task 25: Demo storyboard draft
+- [ ] Task 30: Onboarding site polish
+- [ ] Task 31: Rough demo recording
+- [ ] Task 32: Status, FAQ, privacy pages
+- [ ] Task 33: Deploy and tag v0.1-demo
+- [ ] Task 35: Seed demo data
+- [ ] Task 36: Final video
+- [ ] Task 37: README, screenshots, pre-submit
+- [ ] Task 38: Submit and tag v1.0-submission
+
+**Checkpoint:**
+- [ ] Feature freeze at 23:59 WAT Nov 2
+- [ ] Tag v0.1-demo
+- [ ] Video ≤3 minutes
+- [ ] Submitted by 18:00 WAT Nov 4
+
+---
+
+### Phase 10: Stretch (Nov 4, if time) — P5
+
+- [ ] Task 34: Messenger adapter or RefPay USDC
 
 ---
 
 ## Design Principles
 
-1. **Hide all technical complexity.** No Meta app IDs, webhook URLs, or verify tokens visible to sellers.
-2. **Feel like a helpful assistant, not a form.** Conversational, warm, never bureaucratic.
-3. **Prove value before asking for work.** Sample reply demo first, business details second.
-4. **Never sound like surveillance.** Frame profile import as "organizing your public posts," not "watching you."
+1. **Hide all technical complexity.** No visible Meta app IDs, webhook URLs, verify tokens.
+2. **Feel like a helpful assistant, not a form.** Conversational, warm.
+3. **Prove value before asking for work.** Sample reply demo first.
+4. **Never sound like surveillance.** Frame as "organizing," not "watching."
 5. **WhatsApp number, not email.** Meet sellers where they are.
 6. **"Do this later" on every step.** Partial setup is better than abandoned setup.
 
 ---
 
-## What Never Gets Cut
+## Nothing Gets Cut
 
-- Payment verification (screenshot → SUSPICIOUS, webhook → CONFIRMED)
-- Sample reply demo
-- Payment safety demo
-- Simplified Instagram connect
-- Demo video
+| Feature | Status |
+|---|---|
+| Payment verification | P0 — must complete |
+| WhatsApp waitlist | P1 — build |
+| Simplified Instagram | P2 — build |
+| Sample reply demo | P3 — build |
+| Payment safety demo | P4 — build |
+| Bank alert parser | P5 — build if P0-P4 solid |
+| Jev tamper scores | P5 — build if P0-P4 solid |
+| Human-in-the-loop | P5 — build if P0-P4 solid |
+| Eval runner | P5 — build if P0-P4 solid |
+| Voice transcription | P5 — build if P0-P4 solid |
+| Fraud memory | P5 — build if P0-P4 solid |
+| Reminders + summary | P5 — build if P0-P4 solid |
+| Demo video | Required — build |
+| Deploy + submit | Required — build |
 
-## Cut List (If Behind)
+---
 
-1. Draft catalog from Instagram posts
-2. Chat-style onboarding
-3. Voice transcription
-4. Fraud memory
-5. Daily summary
-6. Payment reminders
-7. Messenger adapter
-8. Advanced onboarding features
+## Schedule Summary
+
+| Day | Focus | Tasks |
+|---|---|---|
+| **Oct 30** | Payment verification | Tasks 15-16 |
+| **Oct 31** | Payment verification | Tasks 17-20 |
+| **Nov 1** | Onboarding | Tasks WA, IG, DEMO, SAFE (P1-P4) |
+| **Nov 2** | Verification V2 + Freeze | Tasks 21-25, freeze at 23:59 |
+| **Nov 3** | Voice + Ops + Video | Tasks 27-29, 31, 35-36 |
+| **Nov 4** | Submit | Tasks 30, 32-33, 37-38 |
+
+**Total:** 6 days, ~38 tasks, ~6 tasks per day.
+
+**Belief:** We can do this.
 
 ---
 
@@ -237,10 +343,12 @@ web/ onboarding (P1-P4)
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Verdict engine false CONFIRMED on fake | Critical | Launch gate: zero tolerance; trust level 1 for screenshots |
+| Payment verification doesn't catch fakes | Critical | Screenshot trust level 1; eval gate zero tolerance |
 | Instagram OAuth breaks | High | Keep technical flow as fallback |
-| WhatsApp never unblocks | Medium | Position as Instagram-first; waitlist keeps demand |
-| Demo video quality | Medium | Two recording sessions; script read aloud |
+| WhatsApp never unblocks | Medium | Position as Instagram-first; waitlist captures demand |
+| Voice transcription fails | Low | Skip if broken; not core feature |
+| Running out of time | Medium | Prioritize P0-P4; P5 is bonus |
+| Demo video quality poor | Medium | Two recording sessions; script ready |
 
 ---
 
@@ -252,3 +360,9 @@ web/ onboarding (P1-P4)
 - New env names in `.env.example` only
 - No secrets, real phone numbers, or real receipts
 - User-visible work saves a clip under `demo/clips/`
+
+---
+
+## Final Note
+
+**Nothing is cut. Everything is possible. We have 6 days. Let's build.**
