@@ -298,6 +298,7 @@ def test_instagram_post_prefers_app_secret_signature() -> None:
 def test_instagram_without_supabase_uses_memory_store() -> None:
     app = create_app(
         _settings(),
+        store=MemoryEchoStore(),
         provider=FakeProvider(),
         jev=FakeJev(),
         transport=httpx.MockTransport(
