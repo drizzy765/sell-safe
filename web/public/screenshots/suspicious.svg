@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#fff8f0"/>
+  <text x="48" y="64" font-family="sans-serif" font-size="28" fill="#9a3412">VERDICT: SUSPICIOUS</text>
+  <text x="48" y="110" font-family="sans-serif" font-size="18" fill="#7c2d12">Edited amount · reused reference · do not release goods</text>
+  <rect x="48" y="150" width="520" height="280" rx="12" fill="#ffedd5"/>
+  <text x="72" y="210" font-family="sans-serif" font-size="18" fill="#9a3412">Screenshot last4 ****</text>
+  <text x="72" y="250" font-family="sans-serif" font-size="18" fill="#9a3412">Claimed NGN 25,000</text>
+  <text x="72" y="290" font-family="sans-serif" font-size="18" fill="#9a3412">Order total NGN 15,000</text>
+  <text x="72" y="360" font-family="sans-serif" font-size="20" font-weight="700" fill="#7c2d12">Release blocked (409)</text>
+</svg>

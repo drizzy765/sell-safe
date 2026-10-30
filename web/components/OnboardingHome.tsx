@@ -29,6 +29,15 @@ export function OnboardingHome() {
             <a className="text-muted-foreground hover:text-foreground" href="#steps">
               Docs
             </a>
+            <a className="text-muted-foreground hover:text-foreground" href="/status">
+              Status
+            </a>
+            <a className="text-muted-foreground hover:text-foreground" href="/faq">
+              FAQ
+            </a>
+            <a className="text-muted-foreground hover:text-foreground" href="/privacy">
+              Privacy
+            </a>
             <ThemeToggle />
           </div>
         </div>
