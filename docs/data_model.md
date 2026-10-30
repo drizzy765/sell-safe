@@ -26,9 +26,12 @@ erDiagram
 | **messages** | seller_id, buyer_id, channel, direction `in/out`, external_msg_id (unique → dedupe), type, text, transcript, media_path, intent, language, asr_confidence numeric, jev_scores jsonb |
 | **webhook_events** | provider, event_id unique, payload jsonb, processed_at (idempotency log) |
 | **daily_summaries** | seller_id, date, orders, paid_kobo, fakes_caught, naira_saved_kobo |
+| **whatsapp_waitlist** | phone_number (Nigerian `+234` plus 10 digits, unique), notified_at |
 
 **messages and speech.** `text` is what the agent used (the typed body, or the accepted transcript). `transcript` is the raw Intron STT string and is null for typed messages. `language` is `en`, `pcm`, or `yo` at launch, plus `ig` or `ha` when the stretch speech path is on; for audio, write the STT language code first and let Jev confirm it. `asr_confidence` is the recognizer's score from 0 to 1, null for typed messages and null when the STT payload has no score (**TODO verify** the response field). Audio bytes stay in private storage (`media_path`); do not put them in the row. Do not log the audio.
 
 **naira_saved_kobo** = sum of `expected_kobo` for payments with a SUSPICIOUS/NOT_FOUND verdict where goods were not released and no later CONFIRMED evidence arrived within 48h.
+
+**whatsapp_waitlist.** Sellers who want WhatsApp when it unblocks. `phone_number` is stored in full (`+234` and 10 digits) because that number is the address we will message. `notified_at` stays null until that message is sent.
 
 RLS: dashboard reads restricted to `seller_id = auth.uid()` mapping; the API uses the service role key server-side only.

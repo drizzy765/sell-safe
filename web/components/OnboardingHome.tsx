@@ -3,6 +3,7 @@
 import { PlatformTabs, useSelectedPlatform } from "@/components/PlatformTabs";
 import { StepCard } from "@/components/StepCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { WhatsAppWaitlist } from "@/components/WhatsAppWaitlist";
 import { guides } from "@/content";
 
 export function OnboardingHome() {
@@ -55,9 +56,13 @@ export function OnboardingHome() {
           </aside>
 
           <section id="steps" className="space-y-4">
-            {guide.steps.map((step, index) => (
-              <StepCard key={step.title} index={index + 1} step={step} />
-            ))}
+            {platform === "whatsapp" ? (
+              <WhatsAppWaitlist />
+            ) : (
+              guide.steps.map((step, index) => (
+                <StepCard key={step.title} index={index + 1} step={step} />
+              ))
+            )}
             {guide.note ? (
               <p className="rounded-xl border border-border bg-muted p-4 text-sm text-muted-foreground">
                 {guide.note}
