@@ -1,6 +1,6 @@
 """Internal API endpoints for onboarding and admin."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api", tags=["internal"])
