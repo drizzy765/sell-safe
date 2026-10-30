@@ -60,6 +60,8 @@ class EchoStore(Protocol):
 
     def get_seller(self, seller_id: str) -> dict | None: ...
 
+    def set_crypto_wallet(self, seller_id: str, address: str, network: str) -> None: ...
+
     def get_buyer_by_id(self, buyer_id: str) -> dict | None: ...
 
 
@@ -202,6 +204,11 @@ class MemoryEchoStore:
 
     def get_seller(self, seller_id: str) -> dict | None:
         return self.seller_details.get(seller_id)
+
+    def set_crypto_wallet(self, seller_id: str, address: str, network: str) -> None:
+        details = self.seller_details.setdefault(seller_id, {"id": seller_id})
+        details["crypto_wallet"] = address
+        details["crypto_network"] = network
 
     def get_buyer_by_id(self, buyer_id: str) -> dict | None:
         return self.buyer_by_id.get(buyer_id)
@@ -379,13 +386,38 @@ class SupabaseEchoStore:
     def get_seller(self, seller_id: str) -> dict | None:
         found = (
             self._client.table("sellers")
-            .select("id, business_name, virtual_account")
+            .select("id, business_name, virtual_account, settings")
             .eq("id", seller_id)
             .limit(1)
             .execute()
         )
         rows = found.data or []
-        return rows[0] if rows else None
+        if not rows:
+            return None
+        row = dict(rows[0])
+        settings = row.get("settings") or {}
+        if isinstance(settings, dict):
+            if settings.get("crypto_wallet"):
+                row["crypto_wallet"] = settings["crypto_wallet"]
+            if settings.get("crypto_network"):
+                row["crypto_network"] = settings["crypto_network"]
+        return row
+
+    def set_crypto_wallet(self, seller_id: str, address: str, network: str) -> None:
+        found = (
+            self._client.table("sellers")
+            .select("settings")
+            .eq("id", seller_id)
+            .limit(1)
+            .execute()
+        )
+        rows = found.data or []
+        settings = {}
+        if rows and isinstance(rows[0].get("settings"), dict):
+            settings = dict(rows[0]["settings"])
+        settings["crypto_wallet"] = address
+        settings["crypto_network"] = network
+        self._client.table("sellers").update({"settings": settings}).eq("id", seller_id).execute()
 
     def get_buyer_by_id(self, buyer_id: str) -> dict | None:
         found = (

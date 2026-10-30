@@ -85,4 +85,4 @@ A buyer can ask prices and place an order in English, Pidgin, or Yoruba. The age
 - Payment verification, screenshot verdict, or release endpoint.
 - Seller commands `/release`, `/summary`.
 - Instagram/Messenger adapters.
-- Dashboard, RefPay, Mono.
+- Dashboard, Mono. Crypto is direct Base USDC (no RefPay).

@@ -7,5 +7,6 @@ Apply in order:
 3. `0003_traces.sql` - trace table and speech metadata on messages.
 4. `0004_evidence_hashes.sql` - SHA-256 and perceptual hashes on payment evidence.
 5. `0005_whatsapp_waitlist.sql` - WhatsApp waitlist numbers (`+234` and 10 digits, unique).
+6. `0006_crypto_payments.sql` - On-chain USDC checks (`tx_hash` unique, amount in USDC base units).
 
 Run in the Supabase SQL editor or via `supabase db push`. The API uses the service role key; RLS is enabled but no anon policies exist yet.

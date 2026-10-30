@@ -48,3 +48,26 @@ def test_notify_returns_501() -> None:
     assert response.status_code == 501
     assert "Not implemented" in response.json()["message"]
     assert store.rows == []
+
+
+class _MissingTableWaitlist:
+    def add(self, phone_number: str) -> dict:
+        raise Exception(
+            {
+                "message": (
+                    "Could not find the table 'public.whatsapp_waitlist' in the schema cache"
+                ),
+                "code": "PGRST205",
+            }
+        )
+
+
+def test_missing_table_returns_503() -> None:
+    app = create_app(
+        Settings(llm_provider="groq"),
+        waitlist=_MissingTableWaitlist(),  # type: ignore[arg-type]
+    )
+    client = TestClient(app)
+    response = client.post("/api/waitlist", json={"phone_number": PHONE})
+    assert response.status_code == 503
+    assert "whatsapp_waitlist table is missing" in response.json()["detail"]

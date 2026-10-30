@@ -17,7 +17,7 @@ flowchart LR
   TOOLS --> VER[Verification Engine]
   PS[Paystack/Flutterwave webhooks] --> VER
   ALERT[Forwarded bank alerts] --> VER
-  CH[RefPay / chain RPC] --> VER
+  CH[Base JSON-RPC / USDC] --> VER
   VER --> JEV
   SCH[Scheduler: reminders, daily summary] --> GW
   DASH[Next.js dashboard] --> DB
@@ -32,7 +32,7 @@ app/
   jev/                  client.py, questions.py
   agent/                orchestrator.py, tools.py, prompts/{en,pcm,yo}.md
   verification/         extract.py, rules.py, matchers.py, verdict.py
-  payments/             paystack.py, flutterwave.py, mono.py, refpay.py, alerts.py
+  payments/             paystack/, flutterwave/, mono/, crypto/ (direct USDC), alerts/
   db/                   models.py, repo.py
   jobs/                 reminders.py, daily_summary.py
 migrations/  tests/  evals/  demo/  dashboard/ (Next.js, optional)

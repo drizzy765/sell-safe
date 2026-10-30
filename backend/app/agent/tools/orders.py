@@ -6,20 +6,42 @@ from app.db.orders import OrderStore
 class OrderTools:
     """Tools bound to a seller and buyer."""
 
-    def __init__(self, seller_id: str, buyer_id: str, orders: OrderStore) -> None:
+    def __init__(
+        self,
+        seller_id: str,
+        buyer_id: str,
+        orders: OrderStore,
+        *,
+        crypto_wallet: str = "",
+        crypto_network: str = "base-sepolia",
+    ) -> None:
         self._seller_id = seller_id
         self._buyer_id = buyer_id
         self._orders = orders
+        self._crypto_wallet = crypto_wallet
+        self._crypto_network = crypto_network
 
     def create_order(self, *, items: list[dict]) -> dict:
         """Create an order from a list of {product_id, qty} items."""
         total_kobo = sum(int(item["qty"]) * int(item["unit_price_kobo"]) for item in items)
-        return self._orders.create_order(
+        order = self._orders.create_order(
             seller_id=self._seller_id,
             buyer_id=self._buyer_id,
             items=items,
             total_kobo=total_kobo,
         )
+        from app.payments.crypto.handle import crypto_instructions_for_items
+
+        usdc_base, instructions = crypto_instructions_for_items(
+            items,
+            wallet=self._crypto_wallet,
+            network=self._crypto_network,
+            ref=str(order["ref"]),
+        )
+        if usdc_base is not None and instructions is not None:
+            order["expected_usdc_base"] = usdc_base
+            order["crypto_instructions"] = instructions
+        return order
 
     def get_order_status(self, *, order_ref: str) -> dict | None:
         """Get the status of an order by its reference."""

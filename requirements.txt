@@ -6,3 +6,4 @@ pydantic-settings>=2.6
 supabase>=2.10
 Pillow>=11.0
 thefuzz>=0.22
+pycryptodome>=3.20

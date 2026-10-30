@@ -55,12 +55,13 @@ class Settings(BaseSettings):
     mono_secret_key: str = ""
     alert_inbound_secret: str = ""
 
-    refpay_api_key: str = ""
-    chain: str = ""
-    chain_rpc_url: str = ""
-    usdc_contract_address: str = ""
-    seller_wallet_address: str = ""
-    min_confirmations: str = ""
+    crypto_network: str = "base-sepolia"
+    crypto_rpc_url: str = ""
+    crypto_chain_id: int = 84532
+    crypto_token_contract: str = ""
+    crypto_min_confirmations: int = 3
+    crypto_explorer_url: str = "https://sepolia.basescan.org"
+    demo_real_tx_hash: str = ""
 
 
 def get_settings() -> Settings:

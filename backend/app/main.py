@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from app.api.internal.crypto import router as crypto_router
 from app.api.internal.jobs import router as internal_jobs_router
 from app.api.internal.jobs import sellers_router as internal_sellers_router
 from app.api.internal.orders import router as internal_orders_router
@@ -82,6 +83,7 @@ def create_app(
     app.include_router(internal_jobs_router)
     app.include_router(internal_sellers_router)
     app.include_router(waitlist_router)
+    app.include_router(crypto_router)
     return app
 
 

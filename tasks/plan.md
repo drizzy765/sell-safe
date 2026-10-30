@@ -173,7 +173,7 @@ ops/ (P5, if time)
 | 29 | Reminders + daily summary | Nov 3 afternoon |
 | 30 | Onboarding polish | Nov 4 morning |
 | 32 | Web finish (status, FAQ) | Nov 4 morning |
-| 34 | Messenger/RefPay (stretch) | Nov 4 if time |
+| 34 | Direct Base USDC (replaces RefPay) | Nov 4 if time |
 
 **Timeline:** Nov 2-4 (3 days)
 
@@ -286,7 +286,7 @@ ops/ (P5, if time)
 
 ### Phase 10: Stretch (Nov 4, if time) — P5
 
-- [ ] Task 34: Messenger adapter or RefPay USDC
+- [x] Task 34: Direct Base USDC verification (RefPay removed)
 
 ---
 

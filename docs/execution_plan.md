@@ -48,7 +48,7 @@
 - Onboarding site polish (Task 30 — partially done)
 - Fraud signals, reminders, daily summary (Tasks 28-29)
 - Web finish, status, FAQ (Task 32)
-- Stretch: Messenger or RefPay (Task 34)
+- Stretch: Direct Base USDC (Task 34; RefPay removed). Messenger only if time remains.
 
 ---
 
@@ -139,7 +139,7 @@
 If P0-P4 are solid by Nov 1:
 - **Nov 2 morning:** Task 25: Demo storyboard refinements
 - **Nov 3 morning:** Task 26: Instagram adapter polish (already done)
-- **Nov 4 morning:** Task 34: Messenger or RefPay stretch
+- **Nov 4 morning:** Task 34: Direct Base USDC (done). Messenger only if time remains.
 
 ---
 

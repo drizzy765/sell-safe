@@ -44,6 +44,18 @@ def not_found_payment() -> str:
     )
 
 
+def crypto_result(status: str, ref: str, reason: str | None = None) -> str:
+    if status == "CONFIRMED":
+        return f"Order {ref} is CONFIRMED. USDC arrived on-chain. Goods may leave the shop."
+    if status == "PENDING":
+        return (
+            f"Order {ref} is PENDING. The transfer is on-chain but needs more confirmations. "
+            "Do not release the goods yet."
+        )
+    text = reason or "the transfer did not match this order"
+    return f"Order {ref} is SUSPICIOUS. {text}. Don't release the goods."
+
+
 def suspicious_payment(reasons: list[str]) -> str:
     reason_text = ", ".join(reasons) if reasons else "suspicious receipt"
     return f"This receipt looks fake: {reason_text}. Don't release the goods."

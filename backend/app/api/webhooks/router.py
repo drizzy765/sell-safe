@@ -26,6 +26,8 @@ from app.decisions.base import JevClient
 from app.decisions.factory import build_jev
 from app.llm.base import LLMProvider
 from app.llm.factory import build_provider
+from app.payments.crypto.handle import extract_tx_hash, handle_crypto_hash
+from app.payments.crypto.store import MemoryCryptoStore
 from app.speech.base import SpeechClient
 from app.speech.factory import build_speech
 
@@ -241,6 +243,29 @@ def _dispatch_inbound(
             seller_id=seller_id,
             buyer_id=buyer_id,
             message=message,
+        )
+        return
+    if message.type == "text" and message.text and extract_tx_hash(message.text):
+        crypto_store = getattr(request.app.state, "crypto_payments", None)
+        if crypto_store is None:
+            crypto_store = MemoryCryptoStore()
+            request.app.state.crypto_payments = crypto_store
+        background.add_task(
+            handle_crypto_hash,
+            text=message.text,
+            seller_id=seller_id,
+            buyer_id=buyer_id,
+            sender_id=message.sender_id,
+            adapter=adapter,
+            store=store,
+            orders=_orders(request),
+            payments=crypto_store,
+            rpc_url=settings.crypto_rpc_url,
+            token_contract=settings.crypto_token_contract,
+            chain_id=settings.crypto_chain_id,
+            network=settings.crypto_network,
+            min_confirmations=settings.crypto_min_confirmations,
+            transport=request.app.state.transport,
         )
         return
     if message.type == "text" and message.text:
