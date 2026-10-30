@@ -1,6 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
+import { AdvancedSetup } from "@/components/AdvancedSetup";
+import { InstagramConnect } from "@/components/InstagramConnect";
+import { PaymentSafetyDemo } from "@/components/PaymentSafetyDemo";
 import { PlatformTabs, useSelectedPlatform } from "@/components/PlatformTabs";
+import { SampleReplyDemo } from "@/components/SampleReplyDemo";
 import { StepCard } from "@/components/StepCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WhatsAppWaitlist } from "@/components/WhatsAppWaitlist";
@@ -9,6 +15,7 @@ import { guides } from "@/content";
 export function OnboardingHome() {
   const platform = useSelectedPlatform();
   const guide = guides[platform];
+  const [instagramConnected, setInstagramConnected] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -58,6 +65,17 @@ export function OnboardingHome() {
           <section id="steps" className="space-y-4">
             {platform === "whatsapp" ? (
               <WhatsAppWaitlist />
+            ) : platform === "instagram" ? (
+              <>
+                <InstagramConnect onConnected={() => setInstagramConnected(true)} />
+                {instagramConnected ? (
+                  <>
+                    <SampleReplyDemo />
+                    <PaymentSafetyDemo />
+                  </>
+                ) : null}
+                <AdvancedSetup steps={guide.steps} />
+              </>
             ) : (
               guide.steps.map((step, index) => (
                 <StepCard key={step.title} index={index + 1} step={step} />
