@@ -74,7 +74,6 @@ def test_confirmed_signal_from_seller_a_flags_seller_b() -> None:
         assert "Scammer Sam" not in blob
         assert len(str(signal["value_hash"])) == 64
 
-
     # Seller B verifies matching extraction → R6.
     extraction = _extraction()
     signals = lookup_confirmed_signals(fraud, extraction, pii_salt=salt)
