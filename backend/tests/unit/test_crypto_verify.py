@@ -7,7 +7,7 @@ from app.payments.crypto.verify import ChainView, Transfer, decode_transfer_logs
 
 SELLER = "0x89d53C4A47989D4beA4a9C5972Bcca71E56012C1"
 BUYER = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359"
-TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+USDC_CONTRACT = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 OTHER = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
 ORDER_AT = datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
 CHAIN_ID = 84532
@@ -23,7 +23,7 @@ def _view(**overrides: object) -> ChainView:
         latest_block=110,
         chain_id=CHAIN_ID,
         transfers=[
-            Transfer(token=TOKEN, sender=BUYER, recipient=SELLER, amount=AMOUNT),
+            Transfer(token=USDC_CONTRACT, sender=BUYER, recipient=SELLER, amount=AMOUNT),
         ],
     )
     return base.model_copy(update=overrides)
@@ -32,7 +32,7 @@ def _view(**overrides: object) -> ChainView:
 def _judge(view: ChainView, **overrides: object):
     args = {
         "seller_wallet": SELLER,
-        "token_contract": TOKEN,
+        "token_contract": USDC_CONTRACT,
         "expected_amount": AMOUNT,
         "min_confirmations": 3,
         "order_created_at": ORDER_AT,
@@ -94,13 +94,13 @@ def test_suspicious_wrong_token() -> None:
 
 
 def test_suspicious_wrong_address() -> None:
-    transfers = [Transfer(token=TOKEN, sender=BUYER, recipient=OTHER, amount=AMOUNT)]
+    transfers = [Transfer(token=USDC_CONTRACT, sender=BUYER, recipient=OTHER, amount=AMOUNT)]
     result = _judge(_view(transfers=transfers))
     assert result.reason == "wrong_address"
 
 
 def test_suspicious_amount_too_small() -> None:
-    transfers = [Transfer(token=TOKEN, sender=BUYER, recipient=SELLER, amount=AMOUNT - 1)]
+    transfers = [Transfer(token=USDC_CONTRACT, sender=BUYER, recipient=SELLER, amount=AMOUNT - 1)]
     result = _judge(_view(transfers=transfers))
     assert result.reason == "amount_too_small"
 
@@ -125,7 +125,7 @@ def test_decode_transfer_logs_ignores_other_events() -> None:
     topic_to = "0x" + "0" * 24 + SELLER[2:].lower()
     logs = [
         {
-            "address": TOKEN.lower(),
+            "address": USDC_CONTRACT.lower(),
             "topics": [
                 "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                 topic_from,
@@ -134,7 +134,7 @@ def test_decode_transfer_logs_ignores_other_events() -> None:
             "data": hex(AMOUNT),
         },
         {
-            "address": TOKEN.lower(),
+            "address": USDC_CONTRACT.lower(),
             "topics": ["0x" + "11" * 32],
             "data": "0x1",
         },

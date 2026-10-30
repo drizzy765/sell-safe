@@ -405,11 +405,7 @@ class SupabaseEchoStore:
 
     def set_crypto_wallet(self, seller_id: str, address: str, network: str) -> None:
         found = (
-            self._client.table("sellers")
-            .select("settings")
-            .eq("id", seller_id)
-            .limit(1)
-            .execute()
+            self._client.table("sellers").select("settings").eq("id", seller_id).limit(1).execute()
         )
         rows = found.data or []
         settings = {}

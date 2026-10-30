@@ -11,7 +11,7 @@ from app.payments.crypto.rpc import CryptoRpc
 from app.payments.crypto.verify import ChainView, Transfer
 
 DEMO_WALLET = "0x89d53C4A47989D4beA4a9C5972Bcca71E56012C1"
-TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+USDC_CONTRACT = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 BUYER = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359"
 REAL_HASH = "0x" + "ab" * 32
 AMOUNT = 15_000_000
@@ -35,7 +35,7 @@ class FakeRpc(CryptoRpc):
                 chain_id=84532,
                 transfers=[
                     Transfer(
-                        token=TOKEN,
+                        token=USDC_CONTRACT,
                         sender=BUYER,
                         recipient=DEMO_WALLET,
                         amount=AMOUNT,
@@ -57,7 +57,7 @@ def _client(**overrides: object) -> tuple[TestClient, MemoryEchoStore, FakeRpc]:
         "crypto_network": "base-sepolia",
         "crypto_rpc_url": "http://crypto.test",
         "crypto_chain_id": 84532,
-        "crypto_token_contract": TOKEN,
+        "crypto_token_contract": USDC_CONTRACT,
         "crypto_min_confirmations": 3,
         "crypto_explorer_url": "https://sepolia.basescan.org",
         "instagram_account_id": "ig-shop",
