@@ -8,6 +8,43 @@ Internal routes (require `X-Internal-Token` unless noted):
 | POST | `/jobs/reminders` | Buyer reminders (max 2) |
 | POST | `/jobs/daily-summary` | Seller daily summary push |
 | GET | `/sellers/{id}/summary?date=` | Summary JSON for a WAT date |
+| POST | `/waitlist` | Add phone to WhatsApp waitlist (public) |
+| POST | `/waitlist/notify` | Notify waitlist entry (501 stub) |
 | * | `/orders/...` | Order release helpers |
 
 Seller chat `/fake` / `/notfake` writes `fraud_signals` (hashed only); verify loads confirmed signals for R6.
+
+## WhatsApp Waitlist
+
+### POST /api/waitlist (Public)
+
+Add a seller's WhatsApp number to the waitlist. We'll notify them when WhatsApp becomes available.
+
+**Request:**
+```json
+{
+  "phone_number": "+2348012345678"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "You'll be notified on WhatsApp when it's ready!",
+  "phone_number": "+2348012345678"
+}
+```
+
+**Validation:**
+- Must be Nigerian format: `+234XXXXXXXXXX`
+- Must be unique (returns 409 if already registered)
+
+### POST /api/waitlist/notify (501 Not Implemented)
+
+Send WhatsApp notification to a waitlist entry. Stub for when WhatsApp unblocks.
+
+**Status:** 501 - Will be implemented when WhatsApp becomes available.
+
+## Why WhatsApp Number Not Email
+
+Nigerian sellers live on WhatsApp. When WhatsApp unblocks, we message them where they already are, with a one-tap connect link.
