@@ -8,8 +8,8 @@ Internal routes (require `X-Internal-Token` unless noted):
 | POST | `/jobs/reminders` | Buyer reminders (max 2) |
 | POST | `/jobs/daily-summary` | Seller daily summary push |
 | GET | `/sellers/{id}/summary?date=` | Summary JSON for a WAT date |
-| POST | `/waitlist` | Add phone to WhatsApp waitlist (public) |
-| POST | `/waitlist/notify` | Notify waitlist entry (501 stub) |
+| POST | `/api/waitlist` | Add phone to WhatsApp waitlist (public, 201 or 409) |
+| POST | `/api/waitlist/notify` | Notify waitlist entry (501 stub) |
 | * | `/orders/...` | Order release helpers |
 
 Seller chat `/fake` / `/notfake` writes `fraud_signals` (hashed only); verify loads confirmed signals for R6.
@@ -27,10 +27,10 @@ Add a seller's WhatsApp number to the waitlist. We'll notify them when WhatsApp 
 }
 ```
 
-**Response:**
+**Response (201):**
 ```json
 {
-  "message": "You'll be notified on WhatsApp when it's ready!",
+  "message": "We'll message you on WhatsApp when ready",
   "phone_number": "+2348012345678"
 }
 ```
@@ -38,6 +38,7 @@ Add a seller's WhatsApp number to the waitlist. We'll notify them when WhatsApp 
 **Validation:**
 - Must be Nigerian format: `+234XXXXXXXXXX`
 - Must be unique (returns 409 if already registered)
+- Stored in `whatsapp_waitlist`
 
 ### POST /api/waitlist/notify (501 Not Implemented)
 

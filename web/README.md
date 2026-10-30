@@ -8,7 +8,8 @@ npm install
 npm run dev
 ```
 
-- `/` and `/?platform=instagram|messenger` — platform tabs + numbered steps
+- `/` — WhatsApp tab shows the coming-soon waitlist (`+234` and 10 digits)
+- `/?platform=instagram|messenger` — platform tabs + numbered steps
 - Code blocks mask secrets and show a **Copied** control
 - Theme: light / dark / system (`next-themes`)
 

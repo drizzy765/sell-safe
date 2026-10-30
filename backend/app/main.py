@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.api.internal.jobs import router as internal_jobs_router
 from app.api.internal.jobs import sellers_router as internal_sellers_router
 from app.api.internal.orders import router as internal_orders_router
+from app.api.internal.waitlist import router as waitlist_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore
@@ -15,6 +16,7 @@ from app.db.fraud_store import FraudStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
 from app.db.storage import ObjectStorage
+from app.db.waitlist_store import WaitlistStore
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
 from app.speech.base import SpeechClient
@@ -37,6 +39,7 @@ def create_app(
     payments: PaymentStore | None = None,
     speech: SpeechClient | None = None,
     fraud: FraudStore | None = None,
+    waitlist: WaitlistStore | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
@@ -52,6 +55,7 @@ def create_app(
     app.state.payments = payments
     app.state.speech = speech
     app.state.fraud = fraud
+    app.state.waitlist = waitlist
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -65,6 +69,7 @@ def create_app(
     app.include_router(internal_orders_router)
     app.include_router(internal_jobs_router)
     app.include_router(internal_sellers_router)
+    app.include_router(waitlist_router)
     return app
 
 

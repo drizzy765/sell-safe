@@ -125,6 +125,7 @@ cp .env.example .env        # fill values locally; NEVER commit .env
 # backend/app/db/migrations/0002_catalog_drafts.sql
 # backend/app/db/migrations/0003_traces.sql
 # backend/app/db/migrations/0004_evidence_hashes.sql
+# backend/app/db/migrations/0005_whatsapp_waitlist.sql
 
 uvicorn app.main:app --reload --port 8000
 
