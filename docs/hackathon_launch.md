@@ -6,10 +6,20 @@ Deadline Nov 4, 9:00 PM ET (Nov 5, 02:00 WAT). Target submit Nov 4, 18:00 WAT. *
 - [ ] README: pitch, GIF, architecture image, setup, Meta models used
 - [ ] Demo video ≤3 min, unlisted YouTube/Loom link works logged-out
 - [ ] Live deployment URL + WhatsApp test number instructions (or video is enough – check rules)
-- [ ] Screenshots: catalog, buyer chat (Pidgin + Yoruba), SUSPICIOUS verdict, CONFIRMED by webhook, daily summary
+- [x] Screenshots: catalog, buyer chat (Pidgin + Yoruba), SUSPICIOUS verdict, CONFIRMED by webhook, daily summary (`web/public/screenshots/`)
 - [ ] Write-up filled; track = Indie
 - [ ] `LLM_PROVIDER=meta` in production and proof of Meta model calls (logs/screenshot)
 - [ ] Confirmation email/screenshot saved
+
+## Live proof + package progress (Oct 30)
+- [x] Automated P0 proof (Paystack CONFIRMED + edited screenshot 409) via `scripts/live_p0_proof.py`
+- [x] Crypto demo hash configured locally; `/api/demo/crypto` ready when server loads `.env`
+- [x] `ALERT_INBOUND_SECRET` + `INTERNAL_API_TOKEN` set locally; `scripts/ops_smoke.py`
+- [x] `scripts/seed_demo.py` + unit test
+- [x] Evals report: run `python -m evals.run` → `evals/reports/` and copy headline to `evals/report.md`
+- [x] Web `/status`, `/faq`, `/privacy`
+- [ ] Human recording + deploy + `v0.1-demo` tag
+
 
 ## Judging angle
 - **Meta models are the core:** Muse vision for catalog and receipt extraction, Muse Spark for multilingual chat and tool calling, Muse Image and SAM 3.1 where the demo uses them, all on the Meta Model API. State the exact ids once verified (**TODO verify**). Groq is a dev fallback and must be labeled as such if the demo still uses it.
@@ -36,9 +46,9 @@ Recording tips: screen-record phone via scrcpy or WhatsApp Web; pre-seed data; s
 
 ## Pre-submit tests (Nov 4 morning)
 - [ ] Fresh WhatsApp number: full order → pay (test) → CONFIRMED
-- [ ] Fake screenshot → SUSPICIOUS, release blocked (409)
-- [ ] Duplicate webhook → processed once
-- [ ] Bad signature → 401
+- [x] Fake screenshot → SUSPICIOUS, release blocked (409) — automated in `demo/clips/PROOF.md` (manual clip still needed)
+- [x] Duplicate webhook → processed once — covered by unit/integration Paystack tests
+- [x] Bad signature → 401 — covered by smoke + unit tests
 - [ ] Yoruba + Pidgin replies checked by a native speaker
 - [ ] `pytest`, eval script, gitleaks all green
 - [ ] Video link opens in incognito

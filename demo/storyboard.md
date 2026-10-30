@@ -49,3 +49,12 @@ Target runtime: 2:45. Maximum 3 minutes. No real phone numbers or account number
 - Replace placeholder account numbers with fictional last-4 digits only.
 - Record phone screen via scrcpy or WhatsApp Web at 1080p.
 - Add captions for every spoken line.
+
+## Recording checklist (this phase)
+
+- [x] Automated P0 proof script: `scripts/live_p0_proof.py` → `demo/clips/PROOF.md`
+- [x] Placeholder screenshots under `web/public/screenshots/`
+- [x] Crypto demo ready when `DEMO_REAL_TX_HASH` is set
+- [ ] Human: record `demo/clips/suspicious.mp4` and `confirmed.mp4` (≤3 min final cut)
+- [ ] Human: upload unlisted Loom/YouTube and paste link into `docs/hackathon_launch.md`
+- [ ] Human: deploy URL + tag `v0.1-demo` after feature freeze

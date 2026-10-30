@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#efeae2"/>
+  <text x="48" y="56" font-family="sans-serif" font-size="24" fill="#222">Buyer chat (Yoruba)</text>
+  <rect x="48" y="90" width="460" height="72" rx="16" fill="#fff"/>
+  <text x="68" y="134" font-family="sans-serif" font-size="18" fill="#222">Elo ni apo dudu yen?</text>
+  <rect x="380" y="190" width="500" height="90" rx="16" fill="#dcf8c6"/>
+  <text x="400" y="234" font-family="sans-serif" font-size="18" fill="#222">Apo dudu na NGN 15,000.</text>
+  <text x="400" y="260" font-family="sans-serif" font-size="16" fill="#444">Se o fe ra eyokan?</text>
+</svg>
