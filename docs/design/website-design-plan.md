@@ -1,9 +1,10 @@
 # Sell-Safe Website Design Plan
 
-**Status:** Plan only (no app code). Prepared for build tomorrow.  
+**Status:** Landing T1–T11 shipped in `web/`. T12–T14 stretch still open. Next before Meta submit: optional partial bench → deploy → demo video last.  
 **Product:** AI sales assistant for Instagram sellers (WhatsApp coming soon). Answers buyers, drafts catalogs from posts, takes orders, and catches fake payment proof.  
 **Audience:** Nigerian small online sellers + Meta hackathon judges. Trustworthy, premium, simple — never technical.  
-**Stack target:** Next.js App Router (`web/`), Tailwind, shadcn/ui, Magic UI, selective 21st.dev blocks. Keep existing light/dark themes and `PlatformTabs`.
+**Stack target:** Next.js App Router (`web/`), Tailwind, shadcn/ui, Magic UI, selective 21st.dev blocks. Keep existing light/dark themes and `PlatformTabs`.  
+**Deadline rule:** Ship redesign → optional partial bench → deploy → **demo video last** → submit.
 
 ---
 
@@ -367,42 +368,40 @@ Prefer **fewer** Magic UI pieces: core set = Shimmer Button, Blur Fade, Dot Patt
 
 ---
 
-## 10. Build order for tomorrow (checklist)
+## 10. Build order (checklist)
 
-Priority: **hero + payment demo first.** Small, testable tasks.
+This is the **current critical path** before demo video / submit. Priority: **hero + payment demo first.** Small, testable tasks. Cut T12–T14 if time gets tight; still record video after a shippable landing.
 
 ### Morning — foundation + hero
 
-- [ ] **T1** Add design tokens to `web/app/globals.css` (brand blues/violet, success/warning/danger, gradients) without breaking existing light/dark.  
+- [x] **T1** Add design tokens to `web/app/globals.css` (brand blues/violet, success/warning/danger, gradients) without breaking existing light/dark.  
   *Files:* `web/app/globals.css`, optionally `web/tailwind.config.ts`
-- [ ] **T2** Install Plus Jakarta Sans + wire `next/font`; keep Geist Mono for money.  
+- [x] **T2** Install Plus Jakarta Sans + wire `next/font`; keep Geist Mono for money.  
   *Files:* `web/app/layout.tsx`
-- [ ] **T3** Copy SVG logos into `web/public/brand/` and build `SellSafeLogo` (colour / mono / dark / wordmark / favicon link).  
+- [x] **T3** Copy SVG logos into `web/public/brand/` and build `SellSafeLogo` (colour / mono / dark / wordmark / favicon link).  
   *Files:* `docs/design/logo/*` → `web/public/brand/`, `web/components/SellSafeLogo.tsx`
-- [ ] **T4** Install Magic UI core: shimmer-button, blur-fade, dot-pattern.  
-  *Cmd:* `npx shadcn@latest add @magicui/shimmer-button @magicui/blur-fade @magicui/dot-pattern`
-- [ ] **T5** Build landing hero: brand, H1, sub, dual CTAs, DotPattern atmosphere, BlurFade.  
-  *Files:* `web/components/landing/Hero.tsx`, update `web/app/page.tsx` or new `LandingHome.tsx`
+- [x] **T4** Install Magic UI core: shimmer-button, blur-fade, dot-pattern.  
+  *Note:* Hand-rolled Magic UI wrappers under `web/components/magicui/` (no interactive shadcn CLI).
+- [x] **T5** Build landing hero: brand, H1, sub, dual CTAs, DotPattern atmosphere, BlurFade.  
+  *Files:* `web/components/landing/LandingHome.tsx`, `web/app/page.tsx`
 
 ### Midday — signature demo + chat visual
 
-- [ ] **T6** Build `HeroChatMock` (buyer question → typing → AI reply in ₦).  
+- [x] **T6** Build `HeroChatMock` (buyer question → typing → AI reply in ₦).  
   *Files:* `web/components/landing/HeroChatMock.tsx`
-- [ ] **T7** Install Border Beam + Number Ticker; upgrade `PaymentSafetyDemo` into theatre with ShieldSpinner scan → CONFIRMED/SUSPICIOUS.  
-  *Cmd:* `npx shadcn@latest add @magicui/border-beam @magicui/number-ticker`  
+- [x] **T7** Install Border Beam + Number Ticker; upgrade `PaymentSafetyDemo` into theatre with ShieldSpinner scan → CONFIRMED/SUSPICIOUS.  
   *Files:* `web/components/PaymentSafetyDemo.tsx`, `web/components/ShieldSpinner.tsx`
-- [ ] **T8** Trust strip Marquee.  
-  *Cmd:* `npx shadcn@latest add @magicui/marquee`  
+- [x] **T8** Trust strip Marquee.  
   *Files:* `web/components/landing/TrustStrip.tsx`
 
 ### Afternoon — rest of landing
 
-- [ ] **T9** How-it-works 3 steps (21st install or custom).  
+- [x] **T9** How-it-works 3 steps (21st install or custom).  
   *Files:* `web/components/landing/HowItWorks.tsx`
-- [ ] **T10** Features grid (4) + catalog preview scroll.  
+- [x] **T10** Features grid (4) + catalog preview scroll.  
   *Files:* `web/components/landing/Features.tsx`, `CatalogPreview.tsx`
-- [ ] **T11** Restyle WhatsApp waitlist band + FAQ accordion + footer with logo.  
-  *Files:* `WhatsAppWaitlist.tsx`, `landing/Faq.tsx`, layout footer
+- [x] **T11** Restyle WhatsApp waitlist band + FAQ accordion + footer with logo.  
+  *Files:* `WhatsAppWaitlist.tsx`, `landing/LandingFaq.tsx`, layout footer
 
 ### Evening — onboarding + dashboard skeleton
 

@@ -1,14 +1,25 @@
 # Hackathon Launch
 Deadline Nov 4, 9:00 PM ET (Nov 5, 02:00 WAT). Target submit Nov 4, 18:00 WAT. **TODO verify** submission platform (Devpost vs Cerebral Valley) and required fields from the official hackathon page/email.
 
+## Finish order (locked Oct 31)
+
+1. **Website redesign** — `docs/design/website-design-plan.md` (T1–T11 landing first; T12–T14 if time)
+2. **Benchmark** — best-effort. Partial SellSafe-Bench is fine. Do **not** delay redesign or video for a full bench. Use measured `evals/report.md` numbers if full bench is incomplete.
+3. **Deploy + README + pre-submit checks** + tag `v0.1-demo`
+4. **Demo video last** — record/edit only after site + deploy are ready
+5. **Submit** + tag `v1.0-submission`
+
+Website redesign and demo video both happen before the deadline. Full benchmark is optional for Meta submit.
+
 ## Submission checklist
 - [ ] Public GitHub repo, MIT license, clean history (gitleaks run)
 - [ ] README: pitch, GIF, architecture image, setup, Meta models used
-- [ ] Demo video ≤3 min, unlisted YouTube/Loom link works logged-out
+- [ ] Website redesign shipped (landing T1–T11 minimum)
 - [ ] Live deployment URL + WhatsApp test number instructions (or video is enough – check rules)
 - [x] Screenshots: catalog, buyer chat (Pidgin + Yoruba), SUSPICIOUS verdict, CONFIRMED by webhook, daily summary (`web/public/screenshots/`)
-- [ ] Write-up filled; track = Indie
+- [ ] Write-up filled; track = Indie (only measured numbers; full bench optional)
 - [ ] `LLM_PROVIDER=meta` in production and proof of Meta model calls (logs/screenshot)
+- [ ] Demo video ≤3 min, unlisted YouTube/Loom link works logged-out (**do this last**)
 - [ ] Confirmation email/screenshot saved
 
 ## Live proof + package progress (Oct 30)
@@ -18,7 +29,9 @@ Deadline Nov 4, 9:00 PM ET (Nov 5, 02:00 WAT). Target submit Nov 4, 18:00 WAT. *
 - [x] `scripts/seed_demo.py` + unit test
 - [x] Evals report: run `python -m evals.run` → `evals/reports/` and copy headline to `evals/report.md`
 - [x] Web `/status`, `/faq`, `/privacy`
-- [ ] Human recording + deploy + `v0.1-demo` tag
+- [ ] Website redesign (before video)
+- [ ] Deploy + `v0.1-demo` tag
+- [ ] Human recording (**last** before submit)
 
 
 ## Judging angle
@@ -28,7 +41,7 @@ Deadline Nov 4, 9:00 PM ET (Nov 5, 02:00 WAT). Target submit Nov 4, 18:00 WAT. *
 - **Safety:** ledger/webhook beats screenshot; "don't release goods" rule; no false confirmations in eval.
 - **Efficiency:** Jev routes cheaply so Muse is called only when needed. Intron Sahara handles voice notes.
 
-## Demo storyboard (≈2:45) – draft by Oct 30, record Nov 1 (rough) and Nov 3 (final ×2)
+## Demo storyboard (≈2:45) – draft ready; **record last** (after redesign + deploy, before submit)
 | Time | Scene | Visual | Voiceover |
 |---|---|---|---|
 | 0:00–0:20 | Hook | Me on camera / fake alert screenshot | "Last year someone almost walked away with my goods using a fake transfer screenshot. It happens to sellers every day." |

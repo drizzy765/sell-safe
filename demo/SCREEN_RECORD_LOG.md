@@ -1,6 +1,6 @@
 # Demo video — screen-record log
 
-Record later. Target final cut ≤3 minutes. 1080p. No real phone numbers or full account numbers.
+**Record last** (after website redesign + deploy). Target final cut ≤3 minutes. 1080p. No real phone numbers or full account numbers.
 
 **Output folder:** `demo/clips/`  
 **Storyboard:** `demo/storyboard.md`  

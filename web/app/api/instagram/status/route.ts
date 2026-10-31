@@ -18,9 +18,16 @@ export async function GET() {
       },
     });
   } catch {
+    // Backend not running — return structured offline so the UI can explain,
+    // instead of a bare gateway failure during local `npm run dev`.
     return NextResponse.json(
-      { detail: "Instagram status is unavailable." },
-      { status: 502 },
+      {
+        ready: false,
+        offline: true,
+        detail:
+          "Backend is offline. Start FastAPI on :8000 (API_BASE_URL) for Instagram status.",
+      },
+      { status: 200 },
     );
   }
 }
