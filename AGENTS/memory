@@ -1,0 +1,266 @@
+# AGENTS Memory File
+
+**Created:** 31 Oct 2026  
+**Updated:** 31 Oct 2026 (v2.1 — next-day live test plan)  
+**Purpose:** Context for AI coding agents working on Sell-Safe
+
+---
+
+## Project Context
+
+### Next session (Nov 1, 2026) — live Instagram feature test
+Logged by Timi (31 Oct):
+
+1. **New business Instagram account** — create and test against a seller account **different from** the existing `sellsafe000` / Sell-Safe Instagram tester. Do not assume the old account is the only target; update `INSTAGRAM_ACCOUNT_ID` / tokens for the new account when provided.
+2. **Playwright MCP** — user will add Playwright MCP so the agent can drive the browser and exercise endpoints / onboarding / connect flows end-to-end.
+3. **Feature requests** — user will list features to add during/after that live test. Wait for that list; don’t invent a backlog.
+4. **Keep finish order:** website polish as needed → optional partial bench → deploy → **demo video last** → Meta submit. Don’t break payments/chat.
+
+### The Overall Plan
+1. Website redesign landing (T1–T11) shipped; polish/stretch as needed. Don't break payments/chat.
+2. SellSafe-Bench best-effort / parallel — **partial OK for Meta**. Full bench is for micro1; do not block redesign or video.
+3. Demo video is **last** before Meta Indie submit (after redesign + deploy).
+4. TrustLock (AI escrow on NEAR) is a different repo. Don't touch it here.
+
+### micro1 Eval Hackathon Instructions
+- Run by micro1, powered by HackerRank. Everything is done through one HackerRank test link.
+- Window: Oct 30, 2026 12:15 AM PDT to Nov 8, 2026 9:15 PM PST (Nov 9, 6:15 AM Lagos time).
+- You can log in any time during the window and upload responses with the same link.
+- Upload ALL responses before pressing Submit. Submit is FINAL and locks the test link.
+- Plan: target finishing by Nov 7, and Timi presses Submit himself after review.
+
+### Meta Deadline
+- The Sell-Safe submission is due Nov 5, 02:00 WAT, so the benchmark report must be ready by Nov 4.
+
+---
+
+## Lessons from SautiCivic Bridge (Spyder Team, Intron Sahara CodeSwitch Challenge 2026)
+
+**Core Lesson:** Accuracy hides headline failures (e.g., "don" heard as "don't" in civic contexts).
+
+### How We Apply It
+
+#### 1. Headline Failure Rates (What Accuracy Hides)
+- **Track B (Vision):** FALSE-CONFIRM RATE - reads fields correctly but calls fake genuine
+- **Track C (Voice):** AMOUNT-ERROR RATE - "25k" vs "2.5k", "fifteen" vs "fifty" (reported next to WER)
+- **Track A (Chat):** UNVERIFIED-CONFIRM RATE - agent confirms without actual verification
+
+#### 2. Tiered Data (SautiCivic's Approach)
+| Tier | Description | Reporting |
+|------|-------------|-----------|
+| Tier A | Real consented in-domain | Report separately, gitignored |
+| Tier B | Public out-of-domain | AfriSpeech-200, FLEURS, etc. |
+| Tier C | Synthetic and adversarial | Fakes from donated receipts, 10+ trap cases |
+
+**NEVER pool Tier A with Tier C.** Test Track B on banks NOT in dev set.
+
+#### 3. Ethics for Real Data (SautiCivic Method)
+- DATA_CONSENT_LOG.md (purpose, retention, withdrawal)
+- Redaction: names, accounts, phones → fake values in same font
+- Pseudonymization: VENDOR-01, CUST-07, SPK-xx
+- Raw files private; publish only redacted
+
+#### 4. Safety Scoring
+- "Can't confirm, check your bank app" = SAFE abstention
+- False confirm = CATASTROPHIC
+- Report: unsafe-confirm escape rate, correct abstentions, false abstentions
+
+#### 5. Better Than SautiCivic
+| Aspect | SautiCivic | SellSafe-Bench |
+|--------|------------|----------------|
+| Labellers | Single | **2+ with Cohen's kappa** |
+| Visualizations | Tables | **Tables + charts** (bars, confusion matrices, cost vs accuracy) |
+| Calibration | ECE 30.9% reported | **ECE < 15% target** |
+| Balance | Uncontrolled | **Across banks/speakers** |
+| Cost | Not reported | **₦/$ per 1,000 receipts** |
+
+#### 6. Reproducibility Standards
+- SHA-256 manifests for all inputs
+- Identical inputs per model
+- Raw outputs never edited
+- Frozen results hash
+- pytest suite
+- One-command rerun: `python -m bench.run --suite all --tier a,b,c`
+
+#### 7. Voice Track Reuse
+SautiCivic runners + consented-speaker method via huggingface.co/datasets/drizzy765/sauticivic-tier-a-recorded for Sahara and Whisper baselines.
+
+---
+
+## Benchmark Tracks
+
+### A. Chat Agent
+- 60–100 realistic Nigerian commerce chats (English, Pidgin)
+- Topics: haggling, stock, policy, payment-confirmation traps
+- Grading: Rubric + LLM judge + **2+ labellers with Cohen's kappa**
+- Headline failure: UNVERIFIED-CONFIRM RATE
+
+### B. Fake Receipt Vision (HEADLINE Track)
+- Synthetic dataset: genuine and edited/fake Nigerian receipts
+- Labels: amount, sender, recipient, bank, reference, date, real/fake
+- Systems: Muse vision (primary), OCR+rules (Tesseract/PaddleOCR/EasyOCR), Vision LLM (Gemma/Llama)
+- Headline failure: FALSE-CONFIRM RATE
+- Metrics: Field exact match, precision/recall/F1, **ECE**, latency, **cost per 1,000 receipts**
+- Safety: unsafe-confirm escape, correct/false abstentions
+
+### C. Voice (Bonus Pilot)
+- AfriSpeech-200 + team recordings
+- Systems: Muse voice (if STT exists), Intron Sahara, Whisper
+- Headline failure: AMOUNT-ERROR RATE (next to WER)
+- Reuse SautiCivic dataset: drizzy765/sauticivic-tier-a-recorded
+- If Meta API lacks STT: mark as future work, don't fake results
+
+---
+
+## Project Structure
+
+```
+bench/
+├── datasets/
+│   ├── tier-a/              # Real consented (gitignored)
+│   ├── tier-b/              # Public out-of-domain
+│   ├── tier-c/              # Synthetic and adversarial
+│   ├── chat_agent/
+│   ├── fake_receipt/
+│   └── voice/
+├── runners/
+├── graders/
+├── results/
+├── report/
+│   ├── figures/             # Charts: bars, confusion matrices, cost vs accuracy
+│   └── tables/              # Leaderboards
+└── DATA_CONSENT_LOG.md      # Ethics documentation
+```
+
+---
+
+## Schedule
+
+| Dates | Focus | Deliverables |
+|-------|-------|--------------|
+| Nov 1 | Website redesign first | Landing T1–T11 |
+| Nov 1–3 | SellSafe-Bench (best-effort) | Partial OK; full tiers/kappa/charts only if ahead |
+| Nov 3–4 | Deploy → **demo video last** → Meta submit | `v0.1-demo`, video link, `v1.0-submission` |
+| Nov 5–7 | micro1 / finish full bench if Meta was partial | HackerRank responses |
+| Nov 8 | Buffer | Final review before Submit |
+
+---
+
+## Team Split (Updated)
+
+| Person | Responsibility |
+|--------|---------------|
+| **Timi** | AI/eval design, model selection, rubric, **calibration analysis** |
+| **David** | Backend, runners, infrastructure, **SHA-256 manifests**, reproducibility |
+| **Paul** | Data, **2+ labeller coordination**, metrics, **charts** (bars, confusion matrices, cost vs accuracy), report |
+
+---
+
+## Report Outline
+
+1. Executive Summary
+2. **Headline Failure Rates** (what accuracy hides)
+3. Leaderboard Tables (**per-tier, never pooled**)
+4. **Visualizations:**
+   - Leaderboard bar charts
+   - Confusion matrices
+   - Cost vs accuracy plots
+   - Calibration curves (ECE)
+5. Detailed Metrics
+6. Failure Examples
+7. **Safety Scoring** (abstention analysis)
+8. **Limitations** (explicit threats)
+9. Conclusions
+
+---
+
+## Ethics and Privacy
+
+### Data Tiers
+- Tier A (real): `evals/data/private/` (gitignored), DATA_CONSENT_LOG.md
+- Tier B (public): `evals/data/synthetic/` with attribution
+- Tier C (synthetic): `evals/data/synthetic/`, safe to commit
+
+### Redaction Standards
+- Names → fake values in same font
+- Account/phone numbers → fake values
+- Chats: VENDOR-01, CUST-07
+- Speakers: SPK-xx
+
+### Consent Documentation
+Every Tier A item needs: purpose, retention period, withdrawal procedure, contact.
+
+---
+
+## Risks and Fallbacks
+
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| Meta Model API doesn't support speech-to-text | Medium | Mark voice as future work |
+| Dataset creation delays | Medium | Start with 60 chats minimum |
+| Human labelling delays | Low | **2+ raters** before Nov 3 |
+| Rate limiting on APIs | Low | Cache responses |
+| HackerRank brief differs | Medium | Keep Nov 5–7 as buffer |
+| ECE calibration poor | Low | Target < 15%, report honestly |
+
+---
+
+## Rules
+
+1. Keys only from `.env` - Never commit `.env` or print secrets
+2. **Honest numbers only** - No fabricated results
+3. **Version everything** - Git SHAs, model IDs, **SHA-256 manifests**
+4. **Tier separation** - Never pool Tier A with Tier C
+5. **Safety first** - False confirm is catastrophic
+6. **Reproducible** - One-command rerun, frozen results hash
+
+---
+
+## Reproducibility Checklist
+
+- [ ] SHA-256 manifests for all inputs
+- [ ] Identical inputs for every model
+- [ ] Raw outputs never edited
+- [ ] Frozen results hash
+- [ ] pytest suite passes
+- [ ] One-command rerun: `python -m bench.run --suite all --tier a,b,c`
+- [ ] System card complete
+- [ ] Limitations section explicit
+
+---
+
+## Stack Reminder (from AGENTS.md)
+
+- Python 3.11, FastAPI, async httpx, Pydantic v2, Supabase (supabase-py / asyncpg), pytest, ruff
+- Optional dashboard/ is Next.js + TypeScript
+- Phase: docs only right now; don't add code unless asked
+- Meta setup: WhatsApp is locked (131031). Facebook Page creation is rate-limited. Next test is Instagram Login.
+- Rules: Never call LLM SDK directly; use LLMProvider (app/llm). Never hardcode model names; read from env.
+- Money is integer kobo. Times are UTC timestamptz; display in WAT.
+- Every webhook: verify signature on raw body, dedupe, return 200 fast, process async.
+- No secrets in code, tests, fixtures or logs.
+- Commands: `ruff check . && ruff format .` · `pytest -q -m "not live"` · `python -m evals.run`
+
+---
+
+## Summary of Changes to Memory File (v2.0)
+
+**Added:**
+- Complete "Lessons from SautiCivic" section with 7 lessons
+- Headline failure rates (FALSE-CONFIRM, AMOUNT-ERROR, UNVERIFIED-CONFIRM)
+- Tiered data system (A/B/C) with explicit "never pool" rule
+- DATA_CONSENT_LOG.md requirement
+- Safety scoring (abstention categories)
+- "Better than SautiCivic" comparison table
+- Reproducibility standards (SHA-256, frozen hash, one-command rerun)
+- SautiCivic dataset reference (drizzy765/sauticivic-tier-a-recorded)
+- Updated project structure with tier directories and figures/tables
+- Updated team responsibilities (calibration, SHA-256, labeller coordination)
+- Report outline with Headline Failures and Visualizations sections
+- Ethics tier table
+- Reproducibility checklist
+
+**Modified:**
+- Schedule: Added DATA_CONSENT_LOG.md and charts deliverables
+- Rules: Added tier separation, safety first, reproducible
+- Risks: Added ECE calibration risk

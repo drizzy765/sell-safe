@@ -161,12 +161,10 @@ pytest -q -m "not live"
 
 | Date | Milestone |
 |---|---|
-| Oct 30-31 | **P0:** Payment verification working (fake → SUSPICIOUS, real → CONFIRMED) |
-| Nov 1 | **P1-P2:** WhatsApp waitlist + simplified Instagram connect |
-| Nov 1 | **P3-P4:** Sample reply demo + payment safety demo |
-| Nov 2 | Feature freeze, tag `v0.1-demo` |
-| Nov 3 | Demo video (≤3 min) |
-| Nov 4 | Submit by 18:00 WAT |
+| Oct 30-31 | **P0–P7 + crypto:** largely in tree (verification, waitlist, demos, voice, fraud, USDC) |
+| Nov 1 | **Website redesign** (`docs/design/website-design-plan.md`) |
+| Nov 1–3 | **SellSafe-Bench** best-effort (partial OK; full bench optional for Meta) |
+| Nov 3–4 | Deploy + `v0.1-demo`, then **demo video last**, then submit by 18:00 WAT |
 
 ---
 

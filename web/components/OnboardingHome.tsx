@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { AdvancedSetup } from "@/components/AdvancedSetup";
@@ -7,6 +8,7 @@ import { InstagramConnect } from "@/components/InstagramConnect";
 import { PaymentSafetyDemo } from "@/components/PaymentSafetyDemo";
 import { PlatformTabs, useSelectedPlatform } from "@/components/PlatformTabs";
 import { SampleReplyDemo } from "@/components/SampleReplyDemo";
+import { SellSafeLogo } from "@/components/SellSafeLogo";
 import { StepCard } from "@/components/StepCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WhatsAppWaitlist } from "@/components/WhatsAppWaitlist";
@@ -21,11 +23,13 @@ export function OnboardingHome() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-primary" aria-hidden />
-            <span className="text-lg font-semibold tracking-tight">Sell-Safe</span>
-          </div>
+          <Link href="/" className="flex items-center" aria-label="Sell-Safe home">
+            <SellSafeLogo height={28} />
+          </Link>
           <div className="flex items-center gap-4 text-sm">
+            <Link className="text-muted-foreground hover:text-foreground" href="/">
+              Home
+            </Link>
             <a className="text-muted-foreground hover:text-foreground" href="#steps">
               Docs
             </a>

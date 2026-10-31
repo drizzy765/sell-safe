@@ -1,11 +1,23 @@
 """Environment-backed settings. Secrets stay in the environment, never in code."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# backend/app/config.py → parents[1]=backend, parents[2]=repo root
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+# Prefer backend/.env when present; also load repo-root .env (common local layout).
+_ENV_FILES = (
+    _BACKEND_DIR / ".env",
+    _REPO_ROOT / ".env",
+    Path(".env"),
+)
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )

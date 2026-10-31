@@ -102,44 +102,38 @@
 
 ---
 
-### Mon Nov 3: Channels + Voice + Demo Recording — 1 Day
+### Mon Nov 3 – early Nov 4: Remaining polish (no video yet)
 
-| Time | Tasks |
-|---|---|
-| Morning | Task 27: Voice-note transcription (Intron STT) |
-| Afternoon | Task 28: Scammer memory, Task 29: Reminders + daily summary |
-| Evening | Task 31: Demo video recording, Task 35: Seed demo data |
-
-**Deliverable:**
-- [ ] Voice notes transcribed (Yoruba, Pidgin, English)
-- [ ] Fraud signals working across sellers
-- [ ] Daily summary calculates ₦ saved
-- [ ] Demo video recorded (≤3 minutes)
+Product P0–P7 and crypto are largely in tree. Use this window for deploy/README polish and any leftover web work. **Do not record the demo video yet.**
 
 ---
 
-### Tue Nov 4: Web Finish + Submit — 1 Day
+### Remaining path to submit (locked order — Oct 31)
 
-| Time | Tasks |
-|---|---|
-| Morning | Task 32: Status, FAQ, privacy pages; Task 30: Onboarding polish |
-| Afternoon | Task 33: Deploy; Task 37: README, screenshots, pre-submit tests |
-| Evening | Task 38: Submit by 18:00 WAT, tag `v1.0-submission` |
+**Hard rule:** Demo video is **last** before Indie submit. Website redesign ships before video. Full SellSafe-Bench is optional for Meta submit.
 
-**Deliverable:**
-- [ ] Deployed URL stable
-- [ ] README complete with screenshots
-- [ ] All tests green
-- [ ] Submitted
+| Order | Work | Rule |
+|---|---|---|
+| **1** | Website redesign (`docs/design/website-design-plan.md` T1–T14) | Required before deadline if time allows; prioritize T1–T11 landing |
+| **2** | SellSafe-Bench (`docs/benchmark.md`) | Best-effort. Partial OK. Do **not** block redesign or video. If short on time, skip full bench for Meta; keep `evals/report.md` headlines |
+| **3** | Deploy + tag `v0.1-demo` + README / pre-submit checks | Before or interleaved with #2; must be ready before video |
+| **4** | Demo video (record → edit → unlisted link) | **Last** creative deliverable |
+| **5** | Submit + tag `v1.0-submission` | After video link works logged-out |
+
+**Deliverable before submit:**
+- [ ] Redesigned site live (or best shippable slice of T1–T11)
+- [ ] Measured numbers only in write-up (full bench optional)
+- [ ] Deployed URL + `v0.1-demo`
+- [ ] Demo video ≤3 min, link in `docs/hackathon_launch.md`
+- [ ] Submitted by Nov 4, 18:00 WAT target
 
 ---
 
 ## Stretch Slot (If Ahead of Schedule)
 
-If P0-P4 are solid by Nov 1:
-- **Nov 2 morning:** Task 25: Demo storyboard refinements
-- **Nov 3 morning:** Task 26: Instagram adapter polish (already done)
-- **Nov 4 morning:** Task 34: Direct Base USDC (done). Messenger only if time remains.
+- Full SellSafe-Bench (tiers, charts, kappa) if #1 and deploy are solid
+- Messenger adapter only if time remains after video
+- Task 34 Base USDC already done
 
 ---
 
@@ -188,13 +182,12 @@ If P0-P4 are solid by Nov 1:
 
 ## Final Note
 
-**We have 6 days. We can build this.**
+Foundation and P0–P7 are largely done. Path to deadline:
 
-The foundation is solid. Tests pass. Architecture is clean. Now we execute:
-1. Oct 30-31: Payment verification (the core)
-2. Nov 1: Onboarding improvements (the experience)
-3. Nov 2: Verification V2 + freeze (the polish)
-4. Nov 3: Voice + fraud + video (the extras)
-5. Nov 4: Deploy + submit (the finish)
+1. **Website redesign** (plan → ship landing first)
+2. **Benchmark** (best-effort / partial OK; full bench not required to submit Sell-Safe)
+3. **Deploy + README**
+4. **Demo video last**
+5. **Submit**
 
-Nothing is cut. Everything is possible.
+Website redesign and demo video both land before the deadline. Full SellSafe-Bench does not block submit.

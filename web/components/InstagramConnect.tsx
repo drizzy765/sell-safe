@@ -18,19 +18,27 @@ export function InstagramConnect({ onConnected }: Props) {
 
     try {
       const response = await fetch("/api/instagram/status");
+      const body = (await response.json().catch(() => ({}))) as {
+        ready?: boolean;
+        offline?: boolean;
+        detail?: string;
+      };
       if (!response.ok) {
         setStatus("error");
-        setError("Could not reach Instagram status. Try again.");
+        setError(body.detail || "Could not reach Instagram status. Try again.");
         return;
       }
-      const body = (await response.json()) as { ready?: boolean };
       if (body.ready === true) {
         setStatus("connected");
         onConnected?.();
         return;
       }
       setStatus("error");
-      setError("Instagram Login is not configured on this server.");
+      setError(
+        body.offline
+          ? "Backend is offline. In another terminal: cd backend && uvicorn app.main:app --reload --port 8000"
+          : body.detail || "Instagram Login is not configured on this server.",
+      );
     } catch {
       setStatus("error");
       setError("Could not reach Instagram status. Try again.");

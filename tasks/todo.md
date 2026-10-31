@@ -863,11 +863,13 @@ We have 6 days. The foundation is solid. We can build everything.
 
 ## Final Note
 
-**Nothing is cut. Everything is possible. We have 6 days. Let's build.**
+**Status refresh (Oct 31):** P0–P7 and P10 (crypto) are largely merged. Checklist rows above are stale for those phases.
 
-- Oct 30-31: Payment verification (P0)
-- Nov 1: Onboarding (P1-P4)
-- Nov 2: Verification V2 + Freeze (P5)
-- Nov 3: Voice + Ops + Video (P6-P8)
-- Nov 4: Submit (P9)
-- Nov 4 (if time): Stretch (P10)
+**Finish order before Meta submit:**
+1. Website redesign (`docs/design/website-design-plan.md`)
+2. SellSafe-Bench best-effort — **partial OK**; full bench does not block submit
+3. Deploy + `v0.1-demo` + README / pre-submit
+4. **Demo video last**
+5. Submit + `v1.0-submission` (P9)
+
+Website redesign and demo video both land before the deadline. Full benchmark is optional for Meta.

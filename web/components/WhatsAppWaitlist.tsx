@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { cn } from "@/lib/utils";
+
 const SUCCESS_MESSAGE = "We'll message you on WhatsApp when ready";
 
 function localDigits(raw: string): string {
@@ -10,7 +12,13 @@ function localDigits(raw: string): string {
   return withoutCountry.slice(0, 10);
 }
 
-export function WhatsAppWaitlist() {
+export function WhatsAppWaitlist({
+  variant = "card",
+  className,
+}: {
+  variant?: "card" | "band";
+  className?: string;
+}) {
   const [localNumber, setLocalNumber] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -53,20 +61,31 @@ export function WhatsAppWaitlist() {
   const locked = status === "submitting" || status === "success";
 
   return (
-    <div className="rounded-xl border border-border bg-muted p-6">
-      <h3 className="mb-2 text-lg font-semibold">WhatsApp Coming Soon</h3>
-      <p className="mb-4 text-sm text-muted-foreground">
-        WhatsApp is temporarily unavailable. Leave your number and we&apos;ll message you when
-        it&apos;s ready.
-      </p>
+    <div
+      className={cn(
+        variant === "band"
+          ? "rounded-lg border border-border bg-muted/50 p-6 md:p-8"
+          : "rounded-xl border border-border bg-muted p-6",
+        className,
+      )}
+    >
+      {variant === "card" ? (
+        <>
+          <h3 className="mb-2 text-lg font-semibold">WhatsApp Coming Soon</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            WhatsApp is temporarily unavailable. Leave your number and we&apos;ll message you when
+            it&apos;s ready.
+          </p>
+        </>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label htmlFor="phone" className="mb-1 block text-sm font-medium">
             WhatsApp number
           </label>
-          <div className="flex overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
-            <span className="flex items-center border-r border-input px-3 text-sm text-muted-foreground">
+          <div className="flex overflow-hidden rounded-md border border-border bg-background focus-within:ring-2 focus-within:ring-primary/40">
+            <span className="flex items-center border-r border-border px-3 text-sm text-muted-foreground">
               +234
             </span>
             <input
@@ -77,7 +96,7 @@ export function WhatsAppWaitlist() {
               value={localNumber}
               onChange={(e) => setLocalNumber(localDigits(e.target.value))}
               placeholder="8012345678"
-              className="w-full bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+              className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
               disabled={locked}
             />
           </div>
@@ -86,15 +105,19 @@ export function WhatsAppWaitlist() {
         <button
           type="submit"
           disabled={locked}
-          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.96] hover:opacity-90 disabled:opacity-50"
         >
-          {status === "submitting" ? "Submitting..." : "Notify Me"}
+          {status === "submitting"
+            ? "Submitting..."
+            : variant === "band"
+              ? "Join the waitlist"
+              : "Notify Me"}
         </button>
 
-        {status === "success" && <p className="text-sm text-green-600">{message}</p>}
+        {status === "success" && <p className="text-sm text-success">{message}</p>}
 
         {status === "error" && (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-danger" role="alert">
             {message}
           </p>
         )}
