@@ -144,10 +144,21 @@ Given the blockers:
    - Keep Instagram as primary (it's working well)
 
 **Simplified onboarding:**
-- One "Connect Instagram" button (OAuth)
+- One "Connect Instagram" button (real Instagram Login OAuth)
+- Disconnect clears the seller session so another Business account can connect (`force_reauth=true`)
 - No technical Meta setup visible to sellers
 - Advanced flow hidden behind "Developer setup" link
 - Technical steps moved to documentation only
+
+**Seller OAuth (local test):**
+1. In Meta App → Instagram → API setup with Instagram login, add Valid OAuth Redirect URI: `http://localhost:3000/api/instagram/oauth/callback` (or your tunnel URL).
+2. Set `.env`: `INSTAGRAM_APP_ID` + `INSTAGRAM_APP_SECRET` from **Instagram → API setup with Instagram login** (not `META_APP_ID` / `META_APP_SECRET` — that causes Meta **Invalid platform app**), `WEB_BASE_URL=http://localhost:3000`, and `INSTAGRAM_OAUTH_REDIRECT_URI` to your **HTTPS** API callback (Meta often rejects `http://localhost`):
+   `https://<APP_BASE_URL-host>/api/instagram/oauth/callback`
+3. In Meta → Instagram → Business login settings, add that **exact** redirect URI (copy/paste, no trailing slash unless Meta adds one).
+4. Add the seller Instagram as an **Instagram Tester** (Development mode).
+5. Run backend `:8000` (tunnel → backend) + `web/` `:3000`, open `/?platform=instagram`, Connect → approve → Disconnect to switch accounts.
+
+Endpoints: `GET /api/instagram/oauth/start`, `POST /api/instagram/oauth/exchange`, `GET /api/instagram/status` (`X-IG-Session`), `POST /api/instagram/disconnect`. Tokens never leave the server; the browser keeps only an opaque session cookie.
 
 ---
 

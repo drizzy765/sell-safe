@@ -51,7 +51,16 @@ class Settings(BaseSettings):
     whatsapp_business_account_id: str = ""
     instagram_account_id: str = ""
     instagram_access_token: str = ""
+    # Instagram product App ID (Instagram → API setup with Instagram login).
+    # Not META_APP_ID — using the Facebook app id causes "Invalid platform app".
+    instagram_app_id: str = ""
     instagram_app_secret: str = ""
+    # Instagram Login OAuth (seller Connect). redirect_uri must match Meta app settings.
+    instagram_oauth_redirect_uri: str = ""
+    instagram_oauth_scopes: str = (
+        "instagram_business_basic,instagram_business_manage_messages"
+    )
+    web_base_url: str = ""
     fb_page_id: str = ""
     fb_page_access_token: str = ""
     graph_api_version: str = ""

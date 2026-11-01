@@ -17,12 +17,17 @@ Instagram Messaging adapter (IG Business/Professional account linked to a Facebo
 | --- | --- |
 | `META_APP_SECRET` | Webhook signature |
 | `META_VERIFY_TOKEN` | Shared with `GET /webhooks/meta` |
-| `INSTAGRAM_ACCOUNT_ID` | Seller channel id for `ensure_seller` |
+| `INSTAGRAM_ACCOUNT_ID` | Seller channel id for `ensure_seller` (bot) |
+| `INSTAGRAM_ACCESS_TOKEN` | Bot send token (dashboard / long-lived) |
+| `INSTAGRAM_APP_SECRET` | Instagram Login secret (webhook sig + OAuth) |
+| `INSTAGRAM_APP_ID` | OAuth `client_id` (Instagram product id — **not** `META_APP_ID`) |
+| `INSTAGRAM_OAUTH_REDIRECT_URI` | Exact Valid OAuth Redirect URI in Meta |
+| `WEB_BASE_URL` | Frontend origin for FastAPI OAuth callback redirects |
 | `FB_PAGE_ID` | Send endpoint page id (falls back to IG account id) |
 | `FB_PAGE_ACCESS_TOKEN` | Graph send + media download |
 | `GRAPH_API_VERSION` | e.g. `v21.0` |
 
-Live Page ↔ IG linking is a human setup step; CI uses fixtures + `httpx.MockTransport`.
+Seller Connect uses Instagram Login OAuth (`/api/instagram/oauth/*`). Live Page ↔ IG linking is a human setup step; CI uses fixtures + `httpx.MockTransport`.
 
 ## Audio
 

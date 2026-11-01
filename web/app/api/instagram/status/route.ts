@@ -1,14 +1,21 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-function apiBaseUrl(): string {
-  const configured = process.env.API_BASE_URL || "http://127.0.0.1:8000";
-  return configured.replace(/\/$/, "");
-}
+import { apiBaseUrl } from "@/lib/apiBaseUrl";
+import { IG_SESSION_COOKIE, IG_SESSION_HEADER } from "@/lib/instagramSession";
 
 export async function GET() {
+  const jar = await cookies();
+  const sessionId = jar.get(IG_SESSION_COOKIE)?.value || "";
+
   try {
+    const headers: HeadersInit = {};
+    if (sessionId) {
+      headers[IG_SESSION_HEADER] = sessionId;
+    }
     const upstream = await fetch(`${apiBaseUrl()}/api/instagram/status`, {
       cache: "no-store",
+      headers,
     });
     const text = await upstream.text();
     return new NextResponse(text, {
@@ -18,10 +25,10 @@ export async function GET() {
       },
     });
   } catch {
-    // Backend not running — return structured offline so the UI can explain,
-    // instead of a bare gateway failure during local `npm run dev`.
     return NextResponse.json(
       {
+        connected: false,
+        oauth_configured: false,
         ready: false,
         offline: true,
         detail:

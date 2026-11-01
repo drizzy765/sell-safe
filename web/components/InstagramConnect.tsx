@@ -1,51 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
-  onConnected?: () => void;
+  onConnected?: (username?: string) => void;
+  onDisconnected?: () => void;
 };
 
-type ConnectStatus = "idle" | "connecting" | "connected" | "error";
+type ConnectStatus = "loading" | "idle" | "connecting" | "connected" | "error";
 
-export function InstagramConnect({ onConnected }: Props) {
-  const [status, setStatus] = useState<ConnectStatus>("idle");
+type StatusBody = {
+  connected?: boolean;
+  oauth_configured?: boolean;
+  username?: string | null;
+  account_id?: string | null;
+  detail?: string;
+  offline?: boolean;
+};
+
+export function InstagramConnect({ onConnected, onDisconnected }: Props) {
+  const [status, setStatus] = useState<ConnectStatus>("loading");
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
+  const onConnectedRef = useRef(onConnected);
+  onConnectedRef.current = onConnected;
 
-  async function handleConnect() {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      const params = new URLSearchParams(window.location.search);
+      const igError = params.get("ig_error");
+      if (igError) {
+        if (!cancelled) {
+          setStatus("error");
+          setError(igError);
+        }
+      }
+
+      try {
+        const response = await fetch("/api/instagram/status", { cache: "no-store" });
+        const body = (await response.json().catch(() => ({}))) as StatusBody;
+        if (cancelled) return;
+        if (body.connected) {
+          const name = body.username || params.get("ig_user") || "";
+          setStatus("connected");
+          setUsername(name);
+          onConnectedRef.current?.(name || undefined);
+          // Already connected sellers go straight to Confirm your shop (Feature 1).
+          if (params.get("platform") === "instagram" && !params.get("stay")) {
+            window.location.replace("/onboarding/shop");
+            return;
+          }
+          return;
+        }
+        if (!igError) {
+          setStatus("idle");
+        }
+        if (body.detail && !body.oauth_configured) {
+          setError(body.detail);
+          setStatus("error");
+        }
+      } catch {
+        if (!cancelled && !igError) {
+          setStatus("error");
+          setError("Could not reach Instagram status. Try again.");
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleConnect() {
     setStatus("connecting");
     setError("");
+    const returnTo = "/onboarding/shop";
+    window.location.href = `/api/instagram/oauth/start?return_to=${encodeURIComponent(returnTo)}&force_reauth=true`;
+  }
 
+  async function handleDisconnect() {
+    setStatus("connecting");
+    setError("");
     try {
-      const response = await fetch("/api/instagram/status");
-      const body = (await response.json().catch(() => ({}))) as {
-        ready?: boolean;
-        offline?: boolean;
-        detail?: string;
-      };
+      const response = await fetch("/api/instagram/disconnect", { method: "POST" });
       if (!response.ok) {
         setStatus("error");
-        setError(body.detail || "Could not reach Instagram status. Try again.");
+        setError("Could not disconnect. Try again.");
         return;
       }
-      if (body.ready === true) {
-        setStatus("connected");
-        onConnected?.();
-        return;
-      }
-      setStatus("error");
-      setError(
-        body.offline
-          ? "Backend is offline. In another terminal: cd backend && uvicorn app.main:app --reload --port 8000"
-          : body.detail || "Instagram Login is not configured on this server.",
-      );
+      setUsername("");
+      setStatus("idle");
+      onDisconnected?.();
     } catch {
       setStatus("error");
-      setError("Could not reach Instagram status. Try again.");
+      setError("Could not disconnect. Try again.");
     }
   }
 
-  const busy = status === "connecting";
+  const busy = status === "connecting" || status === "loading";
   const connected = status === "connected";
 
   return (
@@ -67,26 +123,49 @@ export function InstagramConnect({ onConnected }: Props) {
         automatically.
       </p>
 
-      <button
-        type="button"
-        onClick={handleConnect}
-        disabled={busy || connected}
-        className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        {busy ? "Connecting..." : connected ? "Connected" : "Connect Instagram"}
-      </button>
+      {connected ? (
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white opacity-80"
+          >
+            Connected{username ? ` · @${username}` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleDisconnect()}
+            disabled={busy}
+            className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          >
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handleConnect}
+          disabled={busy}
+          className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        >
+          {status === "connecting" ? "Connecting..." : status === "loading" ? "Checking..." : "Connect Instagram"}
+        </button>
+      )}
 
       <p className="mt-4 text-sm" role="status" aria-live="polite">
         {connected ? (
           <span className="text-foreground">
-            Instagram connected. Sell-Safe can reply to your DMs.
+            {username
+              ? `@${username} connected. Sell-Safe can reply to this account's DMs.`
+              : "Instagram connected. Sell-Safe can reply to your DMs."}
           </span>
         ) : null}
         {status === "error" ? <span className="text-red-600">{error}</span> : null}
       </p>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        We only read messages you receive. We never post on your behalf.
+        We only read messages you receive. We never post on your behalf. Disconnect anytime to
+        connect a different Instagram Business account.
       </p>
     </div>
   );

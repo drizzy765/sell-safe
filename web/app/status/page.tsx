@@ -8,7 +8,7 @@ const checks = [
   },
   {
     name: "Instagram Login",
-    detail: "Ready when INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_ACCOUNT_ID are set.",
+    detail: "Seller Connect uses Instagram Login OAuth (INSTAGRAM_APP_ID + INSTAGRAM_APP_SECRET + INSTAGRAM_OAUTH_REDIRECT_URI). Do not use META_APP_ID. Bot webhooks still use INSTAGRAM_ACCESS_TOKEN.",
     state: "connected" as const,
   },
   {
