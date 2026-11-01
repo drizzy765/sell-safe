@@ -43,7 +43,8 @@ def smoke_with_client(client: httpx.Client | TestClient, settings: Settings) -> 
     )
 
     r = client.get("/api/instagram/status")
-    ok = r.status_code == 200 and "ready" in r.json()
+    body = r.json() if r.status_code == 200 else {}
+    ok = r.status_code == 200 and "connected" in body and "oauth_configured" in body
     record("GET /api/instagram/status", ok, str(r.status_code))
 
     r = client.get("/privacy")

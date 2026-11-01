@@ -7,7 +7,7 @@ const faqs = [
   },
   {
     q: "How do I connect Instagram?",
-    a: "Open the Instagram tab and use Connect Instagram. The app checks that your Login session env vars are already set — no new OAuth token is minted in this build.",
+    a: "Open Connect Instagram. Meta Instagram Login opens for your Business account. After you approve, Sell-Safe stores a session for that account. Use Disconnect to clear it and connect a different account. Testers must be added on the Meta app in Development mode. If Meta says Invalid platform app, INSTAGRAM_APP_ID is wrong — use the Instagram product App ID, not META_APP_ID.",
   },
   {
     q: "How does payment safety work?",

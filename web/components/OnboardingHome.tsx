@@ -18,6 +18,7 @@ export function OnboardingHome() {
   const platform = useSelectedPlatform();
   const guide = guides[platform];
   const [instagramConnected, setInstagramConnected] = useState(false);
+  const [instagramUsername, setInstagramUsername] = useState("");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -80,9 +81,23 @@ export function OnboardingHome() {
               <WhatsAppWaitlist />
             ) : platform === "instagram" ? (
               <>
-                <InstagramConnect onConnected={() => setInstagramConnected(true)} />
+                <InstagramConnect
+                  onConnected={(name) => {
+                    setInstagramConnected(true);
+                    setInstagramUsername(name || "");
+                  }}
+                  onDisconnected={() => {
+                    setInstagramConnected(false);
+                    setInstagramUsername("");
+                  }}
+                />
                 {instagramConnected ? (
                   <>
+                    {instagramUsername ? (
+                      <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+                        Signed in as <span className="font-medium text-foreground">@{instagramUsername}</span>
+                      </p>
+                    ) : null}
                     <SampleReplyDemo />
                     <PaymentSafetyDemo />
                   </>

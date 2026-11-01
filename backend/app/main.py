@@ -4,18 +4,26 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from app.api.internal.catalog_onboarding import router as catalog_onboarding_router
 from app.api.internal.crypto import router as crypto_router
+from app.api.internal.dashboard import router as dashboard_router
+from app.api.internal.instagram_oauth import router as instagram_oauth_router
 from app.api.internal.jobs import router as internal_jobs_router
 from app.api.internal.jobs import sellers_router as internal_sellers_router
+from app.api.internal.onboarding import router as onboarding_router
 from app.api.internal.orders import router as internal_orders_router
 from app.api.internal.waitlist import router as waitlist_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
-from app.db.catalog_store import CatalogStore
+from app.db.catalog_store import CatalogStore, MemoryCatalogStore
 from app.db.echo_store import EchoStore
 from app.db.fraud_store import FraudStore
+from app.db.instagram_session_store import InstagramSessionStore
+from app.db.onboarding_catalog_store import MemoryOnboardingCatalogStore, OnboardingCatalogStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
+from app.db.shop_media_store import MemoryShopMediaStore
+from app.db.shop_store import MemoryShopStore, ShopStore
 from app.db.storage import ObjectStorage
 from app.db.waitlist_store import WaitlistStore
 from app.decisions.base import JevClient
@@ -26,12 +34,6 @@ from app.speech.base import SpeechClient
 class HealthResponse(BaseModel):
     status: str
     provider: str
-
-
-class InstagramStatusResponse(BaseModel):
-    """Whether Instagram Login is configured. Never includes tokens or ids."""
-
-    ready: bool
 
 
 def create_app(
@@ -47,6 +49,10 @@ def create_app(
     speech: SpeechClient | None = None,
     fraud: FraudStore | None = None,
     waitlist: WaitlistStore | None = None,
+    instagram_sessions: InstagramSessionStore | None = None,
+    shops: ShopStore | None = None,
+    onboarding_catalog: OnboardingCatalogStore | None = None,
+    shop_media: MemoryShopMediaStore | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
@@ -56,23 +62,21 @@ def create_app(
     app.state.transport = transport
     app.state.provider = provider
     app.state.storage = storage
-    app.state.catalog = catalog
+    app.state.catalog = catalog or MemoryCatalogStore()
     app.state.jev = jev
     app.state.orders = orders
     app.state.payments = payments
     app.state.speech = speech
     app.state.fraud = fraud
     app.state.waitlist = waitlist
+    app.state.instagram_sessions = instagram_sessions or InstagramSessionStore()
+    app.state.shops = shops or MemoryShopStore()
+    app.state.onboarding_catalog = onboarding_catalog or MemoryOnboardingCatalogStore()
+    app.state.shop_media = shop_media or MemoryShopMediaStore()
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok", provider=resolved.llm_provider)
-
-    @app.get("/api/instagram/status", response_model=InstagramStatusResponse)
-    def instagram_status() -> InstagramStatusResponse:
-        token = resolved.instagram_access_token.strip()
-        account_id = resolved.instagram_account_id.strip()
-        return InstagramStatusResponse(ready=bool(token and account_id))
 
     @app.get("/privacy", response_class=HTMLResponse)
     def privacy() -> str:
@@ -84,6 +88,10 @@ def create_app(
     app.include_router(internal_sellers_router)
     app.include_router(waitlist_router)
     app.include_router(crypto_router)
+    app.include_router(instagram_oauth_router)
+    app.include_router(onboarding_router)
+    app.include_router(catalog_onboarding_router)
+    app.include_router(dashboard_router)
     return app
 
 
