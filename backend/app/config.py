@@ -57,9 +57,7 @@ class Settings(BaseSettings):
     instagram_app_secret: str = ""
     # Instagram Login OAuth (seller Connect). redirect_uri must match Meta app settings.
     instagram_oauth_redirect_uri: str = ""
-    instagram_oauth_scopes: str = (
-        "instagram_business_basic,instagram_business_manage_messages"
-    )
+    instagram_oauth_scopes: str = "instagram_business_basic,instagram_business_manage_messages"
     web_base_url: str = ""
     fb_page_id: str = ""
     fb_page_access_token: str = ""

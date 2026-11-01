@@ -194,6 +194,7 @@ async def oauth_callback(
             status_code=503,
             detail="WEB_BASE_URL is required when using the backend OAuth callback.",
         )
+
     def _to_web(**params: str) -> RedirectResponse:
         return RedirectResponse(
             url=f"{web_base}/api/instagram/session?{urlencode(params)}",

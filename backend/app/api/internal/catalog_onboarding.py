@@ -92,9 +92,7 @@ def _shop_media(request: Request) -> MemoryShopMediaStore:
 def _is_video(filename: str, content_type: str = "") -> bool:
     lower = (filename or "").lower()
     ctype = (content_type or "").lower()
-    return ctype.startswith("video/") or lower.endswith(
-        (".mp4", ".mov", ".webm", ".m4v", ".avi")
-    )
+    return ctype.startswith("video/") or lower.endswith((".mp4", ".mov", ".webm", ".m4v", ".avi"))
 
 
 def _provider(request: Request):

@@ -24,11 +24,7 @@ def _norm_name(name: str) -> str:
 def apply_shop_flags(drafts: list[ProductDraft], candidate: ProductDraft) -> ProductDraft:
     """Flag duplicates and price outliers against existing drafts/products."""
     flags = list(candidate.flags)
-    peers = [
-        d
-        for d in drafts
-        if d.id != candidate.id and d.status in {"draft", "approved"}
-    ]
+    peers = [d for d in drafts if d.id != candidate.id and d.status in {"draft", "approved"}]
     for peer in peers:
         if _norm_name(peer.name) and _norm_name(peer.name) == _norm_name(candidate.name):
             if "duplicate" not in flags:
@@ -38,9 +34,7 @@ def apply_shop_flags(drafts: list[ProductDraft], candidate: ProductDraft) -> Pro
     prices = [d.price_ngn for d in peers if isinstance(d.price_ngn, int) and d.price_ngn > 0]
     if candidate.price_ngn and prices:
         mid = median(prices)
-        if mid > 0 and (
-            candidate.price_ngn >= mid * 5 or candidate.price_ngn <= max(mid / 5, 1)
-        ):
+        if mid > 0 and (candidate.price_ngn >= mid * 5 or candidate.price_ngn <= max(mid / 5, 1)):
             if "price_outlier" not in flags:
                 flags.append("price_outlier")
 

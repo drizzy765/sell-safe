@@ -106,9 +106,7 @@ class InstagramProfileClient:
                     raise
 
         account_id = str(
-            profile_payload.get("user_id")
-            or profile_payload.get("id")
-            or fallback_account_id
+            profile_payload.get("user_id") or profile_payload.get("id") or fallback_account_id
         ).strip()
         username = str(profile_payload.get("username") or fallback_username).strip()
         if not account_id:
