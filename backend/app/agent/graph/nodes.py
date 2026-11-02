@@ -37,6 +37,10 @@ def _system_prompt(
         "You have access to the following tools. Use them when needed.",
         "If a tool result includes crypto_instructions, copy that sentence exactly.",
         "Do not invent a wallet address or a USDC amount.",
+        "When the buyer asks for account number / how to pay, call get_payment_details.",
+        "If payment_details.configured is true, share bank_name, account_name, and account_number exactly.",
+        "If configured is false, say the shop has not added transfer details yet — do not ask for a receipt first.",
+        "Never invent bank account numbers. Never ask for a transfer receipt before sharing pay-to details.",
         json.dumps(tools, ensure_ascii=False),
     ]
     if order:
@@ -100,6 +104,7 @@ async def sales_agent(
     messages = [{"role": "system", "content": system}] + _history_messages(state.history)
 
     allowed_prices: set[int] = set()
+    allowed_accounts: set[str] = set()
     tool_call_count = 0
 
     while state.steps < _MAX_STEPS and tool_call_count < _MAX_TOOL_CALLS:
@@ -137,6 +142,7 @@ async def sales_agent(
                     price = output.get("price_kobo")
                     if price is not None:
                         allowed_prices.add(int(price))
+                    _collect_allowed_accounts(output, allowed_accounts)
             tool_call_payloads = [tc.model_dump() for tc in result.tool_calls]
             messages.append(
                 {
@@ -155,6 +161,7 @@ async def sales_agent(
                 result.text,
                 language=state.language,
                 allowed_prices_kobo=allowed_prices or None,
+                allowed_account_numbers=allowed_accounts or None,
                 verdict=state.verdict.get("verdict") if state.verdict else None,
             )
             return state
@@ -180,6 +187,18 @@ def _dispatch_tool(
     if name in ("search_catalog", "get_product"):
         return catalog_tools.dispatch(name, arguments)
     return order_tools.dispatch(name, arguments)
+
+
+def _collect_allowed_accounts(output: dict, allowed: set[str]) -> None:
+    """Allowlist shop payout digits returned by payment tools."""
+    direct = output.get("account_number")
+    if isinstance(direct, str) and direct.strip():
+        allowed.add("".join(ch for ch in direct if ch.isdigit()))
+    nested = output.get("payment_details")
+    if isinstance(nested, dict):
+        nested_acct = nested.get("account_number")
+        if isinstance(nested_acct, str) and nested_acct.strip():
+            allowed.add("".join(ch for ch in nested_acct if ch.isdigit()))
 
 
 def _product_from_tools(state: State) -> dict | None:

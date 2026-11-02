@@ -179,6 +179,7 @@ function DashboardInner() {
   async function saveSettings(patch: Partial<DashboardSettings>) {
     setBusy(true);
     setError("");
+    setMessage("");
     try {
       const response = await fetch("/api/dashboard/settings", {
         method: "PATCH",
@@ -190,7 +191,32 @@ function DashboardInner() {
         setError(body.detail || "Could not save settings.");
         return;
       }
+      setMessage("Settings saved.");
       await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveShop(patch: Record<string, unknown>) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/onboarding/shop", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const body = (await response.json().catch(() => ({}))) as { detail?: string };
+      if (!response.ok) {
+        setError(body.detail || "Could not save shop info.");
+        return;
+      }
+      setMessage("Shop & payout details saved.");
+      await load();
+    } catch {
+      setError("Could not save shop info.");
     } finally {
       setBusy(false);
     }
@@ -266,18 +292,35 @@ function DashboardInner() {
             </button>
           ))}
         </nav>
-        <div className="border-t border-white/10 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => switchTab("settings")}
+          className="border-t border-white/10 px-4 py-3 text-left hover:bg-white/5"
+          title="Edit shop & payout info"
+        >
           <p className="truncate text-xs font-medium">{shopHandle}</p>
           <p className="truncate text-[11px] text-white/50">{data!.shop?.name || "Test Shop"}</p>
-        </div>
+          <p className="mt-1 text-[10px] text-[#2876fe]">Edit shop info →</p>
+        </button>
       </aside>
 
       <main className="min-w-0 flex-1">
+        {message && tab === "settings" ? (
+          <p className="mx-6 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
+            {message}
+          </p>
+        ) : null}
+        {error && data ? (
+          <p className="mx-6 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            {error}
+          </p>
+        ) : null}
         {tab === "inbox" ? (
           <InboxView
             handle={shopHandle}
             replyMode={settings.reply_mode}
             conversations={data!.inbox || []}
+            inboxSync={data!.inbox_sync}
             onRefresh={load}
             onModeChange={async (mode) => {
               await saveSettings({ reply_mode: mode });
@@ -302,7 +345,13 @@ function DashboardInner() {
         ) : null}
 
         {tab === "settings" ? (
-          <SettingsView settings={settings} busy={busy} onSave={saveSettings} />
+          <SettingsView
+            settings={settings}
+            shop={data!.shop}
+            busy={busy}
+            onSave={saveSettings}
+            onSaveShop={saveShop}
+          />
         ) : null}
 
         {tab === "orders" ? (

@@ -12,15 +12,32 @@ import {
   initials,
 } from "./types";
 
+type InboxSync = {
+  attempted?: boolean;
+  ok?: boolean;
+  conversations?: number;
+  inserted?: number;
+  error?: string | null;
+  endpoint?: string | null;
+};
+
 type Props = {
   handle: string;
   replyMode: string;
   conversations: Conversation[];
+  inboxSync?: InboxSync | null;
   onRefresh: () => Promise<void>;
   onModeChange: (mode: string) => Promise<void>;
 };
 
-export function InboxView({ handle, replyMode, conversations, onRefresh, onModeChange }: Props) {
+export function InboxView({
+  handle,
+  replyMode,
+  conversations,
+  inboxSync,
+  onRefresh,
+  onModeChange,
+}: Props) {
   const [folder, setFolder] = useState<"primary" | "general" | "requests">("primary");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -194,6 +211,35 @@ export function InboxView({ handle, replyMode, conversations, onRefresh, onModeC
               <p className="mt-1 text-xs text-[#8e8e8e]">
                 When buyers DM your Instagram, threads appear here — no demo chats.
               </p>
+              {inboxSync?.error ? (
+                <p className="mt-3 max-w-[260px] text-[11px] leading-snug text-[#ed4956]">
+                  {inboxSync.error}
+                </p>
+              ) : null}
+              {inboxSync?.attempted && !inboxSync.error && (inboxSync.conversations || 0) === 0 ? (
+                <p className="mt-3 max-w-[260px] text-[11px] leading-snug text-[#8e8e8e]">
+                  Meta returned 0 conversations. Add Testicles22 as an Instagram Tester, have
+                  them DM @sellsafe.testshop.ng, then Refresh — no fake/demo threads.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    setBusy(true);
+                    try {
+                      await fetch("/api/dashboard/inbox/pull", { method: "POST" });
+                      await onRefresh();
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+                disabled={busy}
+                className="mt-4 rounded-lg border border-[#dbdbdb] px-3 py-1.5 text-xs font-semibold text-[#262626] disabled:opacity-50"
+              >
+                {busy ? "Syncing…" : "Refresh inbox"}
+              </button>
             </div>
           ) : (
             filtered.map((chat) => {

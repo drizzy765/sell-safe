@@ -83,14 +83,24 @@ class InboxControlStore:
             row.reply_mode = mode
             return deepcopy(row)
 
-    def mark_inbound(self, seller_id: str, buyer_id: str, *, at: str | None = None) -> None:
+    def mark_inbound(
+        self,
+        seller_id: str,
+        buyer_id: str,
+        *,
+        at: str | None = None,
+        count_unread: bool = True,
+    ) -> None:
         with self._lock:
             row = self._controls.setdefault(
                 (seller_id, buyer_id),
                 ConversationControl(seller_id=seller_id, buyer_id=buyer_id),
             )
-            row.unread += 1
-            row.last_inbound_at = at or _now()
+            if count_unread:
+                row.unread += 1
+            stamp = at or _now()
+            if not row.last_inbound_at or stamp >= row.last_inbound_at:
+                row.last_inbound_at = stamp
 
     def clear_unread(self, seller_id: str, buyer_id: str) -> None:
         with self._lock:

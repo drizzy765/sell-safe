@@ -2,11 +2,18 @@
 
 The webhook dedupes on messages.external_msg_id. Tests use MemoryEchoStore.
 SupabaseEchoStore is what the process uses when no store is injected.
+Local demos can mirror MemoryEchoStore to ``.tmp/echo_store.json``.
 """
 
+from __future__ import annotations
+
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
+
+DEFAULT_ECHO_PERSIST_PATH = Path(".tmp/echo_store.json")
 
 
 def _utc_now() -> str:
@@ -45,6 +52,8 @@ class EchoStore(Protocol):
         transcript: str | None = None,
         asr_confidence: float | None = None,
         media_path: str | None = None,
+        created_at: str | None = None,
+        meta: dict | None = None,
     ) -> bool: ...
 
     def save_outbound(
@@ -84,9 +93,9 @@ class EchoStore(Protocol):
 
 
 class MemoryEchoStore:
-    """In-memory store for tests. A repeated external_msg_id returns False."""
+    """In-memory store for tests / local demos. A repeated external_msg_id returns False."""
 
-    def __init__(self) -> None:
+    def __init__(self, persist_path: Path | None = None) -> None:
         self.sellers: dict[str, str] = {}
         self.seller_languages: dict[str, str] = {"default": "en"}
         self.seller_details: dict[str, dict] = {}
@@ -94,6 +103,59 @@ class MemoryEchoStore:
         self.buyers: dict[tuple[str, str], str] = {}
         self.buyer_by_id: dict[str, dict[str, str]] = {}
         self.messages: dict[str, dict] = {}
+        self._persist_path = persist_path
+        if self._persist_path is not None:
+            self._load()
+
+    def _save(self) -> None:
+        if self._persist_path is None:
+            return
+        payload = {
+            "sellers": self.sellers,
+            "seller_languages": self.seller_languages,
+            "seller_details": self.seller_details,
+            "seller_channels": {
+                f"{channel}|{external_id}": seller_id
+                for (channel, external_id), seller_id in self.seller_channels.items()
+            },
+            "buyers": {
+                f"{channel}|{external_id}": buyer_id
+                for (channel, external_id), buyer_id in self.buyers.items()
+            },
+            "buyer_by_id": self.buyer_by_id,
+            "messages": self.messages,
+        }
+        try:
+            self._persist_path.parent.mkdir(parents=True, exist_ok=True)
+            self._persist_path.write_text(json.dumps(payload), encoding="utf-8")
+        except OSError:
+            pass
+
+    def _load(self) -> None:
+        path = self._persist_path
+        if path is None or not path.is_file():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if not isinstance(payload, dict):
+            return
+        self.sellers = dict(payload.get("sellers") or {})
+        self.seller_languages = dict(payload.get("seller_languages") or {"default": "en"})
+        self.seller_details = dict(payload.get("seller_details") or {})
+        self.buyer_by_id = dict(payload.get("buyer_by_id") or {})
+        self.messages = dict(payload.get("messages") or {})
+        self.seller_channels = {}
+        for key, seller_id in dict(payload.get("seller_channels") or {}).items():
+            channel, _, external_id = str(key).partition("|")
+            if channel and external_id:
+                self.seller_channels[(channel, external_id)] = str(seller_id)
+        self.buyers = {}
+        for key, buyer_id in dict(payload.get("buyers") or {}).items():
+            channel, _, external_id = str(key).partition("|")
+            if channel and external_id:
+                self.buyers[(channel, external_id)] = str(buyer_id)
 
     def ensure_seller(self, phone_number_id: str, *, channel: str = "whatsapp") -> str:
         if phone_number_id not in self.sellers:
@@ -109,6 +171,7 @@ class MemoryEchoStore:
             }
         seller_id = self.sellers[phone_number_id]
         self.seller_channels[(channel, phone_number_id)] = seller_id
+        self._save()
         return seller_id
 
     def register_channel(
@@ -118,6 +181,7 @@ class MemoryEchoStore:
         external_id: str,
     ) -> None:
         self.seller_channels[(channel, external_id)] = seller_id
+        self._save()
 
     def get_seller_by_channel(
         self,
@@ -147,6 +211,7 @@ class MemoryEchoStore:
             }
         elif display_name:
             self.buyer_by_id[self.buyers[key]]["display_name"] = display_name
+        self._save()
         return self.buyers[key]
 
     def get_seller_language(self, seller_id: str) -> str:
@@ -166,6 +231,8 @@ class MemoryEchoStore:
         transcript: str | None = None,
         asr_confidence: float | None = None,
         media_path: str | None = None,
+        created_at: str | None = None,
+        meta: dict | None = None,
     ) -> bool:
         if external_msg_id in self.messages:
             # Voice path re-saves ASR fields onto the original audio row.
@@ -176,6 +243,7 @@ class MemoryEchoStore:
                 existing["asr_confidence"] = asr_confidence
                 if text is not None:
                     existing["text"] = text
+                self._save()
                 return True
             return False
         self.messages[external_msg_id] = {
@@ -192,9 +260,10 @@ class MemoryEchoStore:
             "transcript": transcript,
             "asr_confidence": asr_confidence,
             "media_path": media_path,
-            "meta": None,
-            "created_at": _utc_now(),
+            "meta": meta,
+            "created_at": created_at or _utc_now(),
         }
+        self._save()
         return True
 
     def save_outbound(
@@ -208,7 +277,10 @@ class MemoryEchoStore:
         message_type: str = "text",
         media_path: str | None = None,
         meta: dict | None = None,
+        created_at: str | None = None,
     ) -> None:
+        if external_msg_id in self.messages:
+            return
         self.messages[external_msg_id] = {
             "id": external_msg_id,
             "external_msg_id": external_msg_id,
@@ -220,8 +292,9 @@ class MemoryEchoStore:
             "text": text,
             "media_path": media_path,
             "meta": meta,
-            "created_at": _utc_now(),
+            "created_at": created_at or _utc_now(),
         }
+        self._save()
 
     def recent_messages(
         self,
@@ -394,6 +467,8 @@ class SupabaseEchoStore:
         transcript: str | None = None,
         asr_confidence: float | None = None,
         media_path: str | None = None,
+        created_at: str | None = None,
+        meta: dict | None = None,
     ) -> bool:
         row: dict[str, str | float | None] = {
             "seller_id": seller_id,
@@ -409,6 +484,11 @@ class SupabaseEchoStore:
             "asr_confidence": asr_confidence,
             "media_path": media_path,
         }
+        # meta is honored by MemoryEchoStore for graph_sync vs webhook races;
+        # Supabase schema may not have a meta column yet.
+        _ = meta
+        if created_at:
+            row["created_at"] = created_at
         try:
             self._client.table("messages").insert(row).execute()
         except Exception as exc:
@@ -438,6 +518,7 @@ class SupabaseEchoStore:
         message_type: str = "text",
         media_path: str | None = None,
         meta: dict | None = None,
+        created_at: str | None = None,
     ) -> None:
         row: dict[str, str | None] = {
             "seller_id": seller_id,
@@ -449,9 +530,16 @@ class SupabaseEchoStore:
             "text": text,
             "media_path": media_path,
         }
+        if created_at:
+            row["created_at"] = created_at
         # meta is memory-only for now; column may not exist on Supabase.
         _ = meta
-        self._client.table("messages").insert(row).execute()
+        try:
+            self._client.table("messages").insert(row).execute()
+        except Exception as exc:
+            if _is_duplicate(exc):
+                return
+            raise
 
     def recent_messages(
         self,

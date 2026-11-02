@@ -97,15 +97,27 @@ export type DashboardSettings = {
   catalog_skipped: boolean;
 };
 
+/** Shop profile from summary / onboarding (account number never returned raw). */
+export type ShopProfile = {
+  id: string;
+  name: string;
+  handle: string;
+  category?: string;
+  logo_url?: string;
+  reply_mode?: string;
+  phone?: string;
+  location?: string;
+  delivery_areas?: string;
+  bank_name?: string;
+  account_name?: string;
+  account_number_masked?: string;
+  account_number_set?: boolean;
+  bio?: string;
+  website?: string;
+};
+
 export type Summary = {
-  shop: {
-    id: string;
-    name: string;
-    handle: string;
-    category?: string;
-    logo_url?: string;
-    reply_mode?: string;
-  } | null;
+  shop: ShopProfile | null;
   stats: {
     chats_today: number;
     orders: number;
@@ -125,6 +137,14 @@ export type Summary = {
   settings: DashboardSettings;
   demo_mode: boolean;
   session_username?: string;
+  inbox_sync?: {
+    attempted?: boolean;
+    ok?: boolean;
+    conversations?: number;
+    inserted?: number;
+    error?: string | null;
+    endpoint?: string | null;
+  };
 };
 
 export type NavTab = "inbox" | "catalog" | "orders" | "outreach" | "settings";

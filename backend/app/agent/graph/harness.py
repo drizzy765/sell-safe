@@ -40,6 +40,7 @@ async def run_turn(
     reply_mode: str = "auto",
     smart_threshold_ngn: int = 50_000,
     settings: object | None = None,
+    shop_store: object | None = None,
 ) -> State:
     """Run one inbound turn through the agent graph."""
     state = State(
@@ -83,12 +84,25 @@ async def run_turn(
 
     catalog_tools = CatalogTools(seller_id, catalog_store)
     seller = store.get_seller(seller_id) or {}
+    bank_name = ""
+    account_name = ""
+    account_number = ""
+    shop = _resolve_shop(shop_store, store, seller_id, seller)
+    if shop is not None:
+        bank_name = str(getattr(shop, "bank_name", "") or "")
+        account_name = str(getattr(shop, "account_name", "") or "")
+        account_number = str(getattr(shop, "account_number", "") or "")
+        if not business_name:
+            business_name = str(getattr(shop, "name", "") or "") or None
     order_tools = OrderTools(
         seller_id,
         buyer_id,
         order_store,
         crypto_wallet=str(seller.get("crypto_wallet") or ""),
         crypto_network=str(seller.get("crypto_network") or "base-sepolia"),
+        bank_name=bank_name,
+        account_name=account_name,
+        account_number=account_number,
     )
 
     if state.intent in ("price_question", "order", "chit_chat"):
@@ -145,6 +159,33 @@ async def run_turn(
         smart_threshold_ngn=smart_threshold_ngn,
     )
     return state
+
+
+def _resolve_shop(
+    shop_store: object | None,
+    store: EchoStore,
+    seller_id: str,
+    seller: dict,
+) -> object | None:
+    """Find the connected shop profile for payout details."""
+    if shop_store is None:
+        return None
+    shop_id = str(seller.get("shop_id") or "").strip()
+    if shop_id and hasattr(shop_store, "get"):
+        found = shop_store.get(shop_id)
+        if found is not None:
+            return found
+    if hasattr(shop_store, "get_by_ig_account"):
+        found = shop_store.get_by_ig_account(seller_id)
+        if found is not None:
+            return found
+        # Seller row may be the IG-scoped id while shop is keyed by user_id (or vice versa).
+        for key, value in (seller.get("channel_ids") or {}).items():
+            if str(key).startswith("instagram") or key == "instagram":
+                alt = shop_store.get_by_ig_account(str(value))
+                if alt is not None:
+                    return alt
+    return None
 
 
 def fallback_for_language(language: str, kind: str) -> str:

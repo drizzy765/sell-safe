@@ -16,10 +16,10 @@ from app.api.internal.waitlist import router as waitlist_router
 from app.api.webhooks.router import router as webhooks_router
 from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore, MemoryCatalogStore
-from app.db.echo_store import EchoStore
+from app.db.echo_store import DEFAULT_ECHO_PERSIST_PATH, EchoStore, MemoryEchoStore
 from app.db.fraud_store import FraudStore
 from app.db.inbox_control import InboxControlStore
-from app.db.instagram_session_store import InstagramSessionStore
+from app.db.instagram_session_store import DEFAULT_PERSIST_PATH, InstagramSessionStore
 from app.db.onboarding_catalog_store import MemoryOnboardingCatalogStore, OnboardingCatalogStore
 from app.db.orders import OrderStore
 from app.db.payments import PaymentStore
@@ -60,7 +60,8 @@ def create_app(
     resolved = settings or get_settings()
     app = FastAPI(title="Sell-Safe")
     app.state.settings = resolved
-    app.state.store = store
+    # Persist local demo messages across StatReload when Supabase is unset.
+    app.state.store = store or MemoryEchoStore(persist_path=DEFAULT_ECHO_PERSIST_PATH)
     app.state.transport = transport
     app.state.provider = provider
     app.state.storage = storage
@@ -71,7 +72,9 @@ def create_app(
     app.state.speech = speech
     app.state.fraud = fraud
     app.state.waitlist = waitlist
-    app.state.instagram_sessions = instagram_sessions or InstagramSessionStore()
+    app.state.instagram_sessions = instagram_sessions or InstagramSessionStore(
+        persist_path=DEFAULT_PERSIST_PATH
+    )
     app.state.shops = shops or MemoryShopStore()
     app.state.onboarding_catalog = onboarding_catalog or MemoryOnboardingCatalogStore()
     app.state.shop_media = shop_media or MemoryShopMediaStore()

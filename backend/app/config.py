@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     whatsapp_business_account_id: str = ""
     instagram_account_id: str = ""
     instagram_access_token: str = ""
+    # Optional @handle fallback when Graph /me username is unavailable.
+    instagram_username: str = ""
     # Instagram product App ID (Instagram → API setup with Instagram login).
     # Not META_APP_ID — using the Facebook app id causes "Invalid platform app".
     instagram_app_id: str = ""

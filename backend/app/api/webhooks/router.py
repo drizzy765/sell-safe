@@ -22,7 +22,12 @@ from app.channels.base import ChannelAdapter, InboundMessage
 from app.channels.instagram.adapter import InstagramAdapter
 from app.channels.whatsapp.adapter import WhatsAppAdapter
 from app.db.catalog_store import CatalogStore, MemoryCatalogStore, build_catalog_store
-from app.db.echo_store import EchoStore, MemoryEchoStore, build_store
+from app.db.echo_store import (
+    DEFAULT_ECHO_PERSIST_PATH,
+    EchoStore,
+    MemoryEchoStore,
+    build_store,
+)
 from app.db.fraud_store import FraudStore, MemoryFraudStore, build_fraud_store
 from app.db.orders import MemoryOrderStore, OrderStore, build_order_store
 from app.db.payments import MemoryPaymentStore, PaymentStore, build_payment_store
@@ -52,7 +57,7 @@ def _store(request: Request) -> EchoStore:
         if _supabase_ready(settings):
             current = build_store(settings)
         else:
-            current = MemoryEchoStore()
+            current = MemoryEchoStore(persist_path=DEFAULT_ECHO_PERSIST_PATH)
         request.app.state.store = current
     return current
 
@@ -204,9 +209,24 @@ def _dispatch_inbound(
         message_type=message.type,
         text=message.text,
         media_path=message.media_id,
+        meta={"source": "webhook"},
     )
     if not saved:
-        return
+        # Dashboard Graph sync may have inserted this id first. Still auto-reply
+        # once; skip only true webhook/agent duplicates.
+        existing = None
+        messages = getattr(store, "messages", None)
+        if isinstance(messages, dict):
+            existing = messages.get(message.external_id)
+        meta = existing.get("meta") if isinstance(existing, dict) else None
+        source = meta.get("source") if isinstance(meta, dict) else None
+        if source != "graph_sync":
+            return
+        if isinstance(existing, dict):
+            existing["meta"] = {**(meta or {}), "source": "webhook", "agent_queued": True}
+            save = getattr(store, "_save", None)
+            if callable(save):
+                save()
     inbox_control = getattr(request.app.state, "inbox_control", None)
     if inbox_control is not None:
         inbox_control.mark_inbound(
@@ -343,6 +363,7 @@ def _dispatch_inbound(
                 reply_mode=reply_mode,
                 smart_threshold_ngn=smart_threshold,
                 settings=settings,
+                shop_store=shops,
             )
 
 
