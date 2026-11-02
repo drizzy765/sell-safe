@@ -277,9 +277,7 @@ async def oauth_callback(
 
     client = _oauth_client(request)
     try:
-        access_token, account_id, username, expires_in, alias_ids = await client.exchange_code(
-            code
-        )
+        access_token, account_id, username, expires_in, alias_ids = await client.exchange_code(code)
     except InstagramOAuthError as exc:
         return _to_web(ig_error=str(exc)[:180])
 

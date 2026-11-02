@@ -38,9 +38,12 @@ def _system_prompt(
         "If a tool result includes crypto_instructions, copy that sentence exactly.",
         "Do not invent a wallet address or a USDC amount.",
         "When the buyer asks for account number / how to pay, call get_payment_details.",
-        "If payment_details.configured is true, share bank_name, account_name, and account_number exactly.",
-        "If configured is false, say the shop has not added transfer details yet — do not ask for a receipt first.",
-        "Never invent bank account numbers. Never ask for a transfer receipt before sharing pay-to details.",
+        "If payment_details.configured is true, share bank_name, "
+        "account_name, and account_number exactly.",
+        "If configured is false, say the shop has not added transfer "
+        "details yet — do not ask for a receipt first.",
+        "Never invent bank account numbers. Never ask for a transfer "
+        "receipt before sharing pay-to details.",
         json.dumps(tools, ensure_ascii=False),
     ]
     if order:

@@ -115,9 +115,7 @@ def _preferred_handle(request: Request, session) -> str:
     account = (getattr(session, "account_id", None) or "").strip()
     env_account = (getattr(settings, "instagram_account_id", None) or "").strip()
     if account and env_account and account == env_account:
-        candidates.append(
-            (getattr(settings, "instagram_username", None) or "").strip().lstrip("@")
-        )
+        candidates.append((getattr(settings, "instagram_username", None) or "").strip().lstrip("@"))
     for handle in candidates:
         if handle and not handle.isdigit():
             return handle
@@ -211,9 +209,7 @@ async def _sync_inbox(request: Request, session, shop, seller_id: str) -> InboxS
                 inbox_control=control,
             )
         except Exception as exc:  # noqa: BLE001 — never fail the dashboard on Graph sync
-            last = InboxSyncReport(
-                attempted=True, error=f"Sync failed: {exc.__class__.__name__}"
-            )
+            last = InboxSyncReport(attempted=True, error=f"Sync failed: {exc.__class__.__name__}")
             continue
         last = report
         if report.ok or (report.conversations or 0) > 0:

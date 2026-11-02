@@ -99,9 +99,7 @@ class InstagramOAuthClient:
         self._settings = settings
         self._transport = transport
 
-    async def exchange_code(
-        self, code: str
-    ) -> tuple[str, str, str, int | None, tuple[str, ...]]:
+    async def exchange_code(self, code: str) -> tuple[str, str, str, int | None, tuple[str, ...]]:
         """Exchange auth code → long-lived token + account id + username.
 
         Returns
@@ -192,18 +190,12 @@ class InstagramOAuthClient:
                     continue
                 igsid = str(payload.get("id") or "").strip()
                 # Professional account id is user_id; keep IG-scoped id as alias.
-                account_id = (
-                    str(payload.get("user_id") or "").strip()
-                    or fallback_user_id
-                    or igsid
-                )
+                account_id = str(payload.get("user_id") or "").strip() or fallback_user_id or igsid
                 username = str(payload.get("username") or "").strip()
                 if username.isdigit():
                     username = ""
                 aliases = tuple(
-                    dict.fromkeys(
-                        a for a in (igsid, fallback_user_id) if a and a != account_id
-                    )
+                    dict.fromkeys(a for a in (igsid, fallback_user_id) if a and a != account_id)
                 )
                 if account_id:
                     return account_id, username, aliases
