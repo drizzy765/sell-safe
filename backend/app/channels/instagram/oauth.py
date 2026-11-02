@@ -99,15 +99,35 @@ class InstagramOAuthClient:
         self._settings = settings
         self._transport = transport
 
-    async def exchange_code(self, code: str) -> tuple[str, str, str, int | None]:
+    async def exchange_code(self, code: str) -> tuple[str, str, str, int | None, tuple[str, ...]]:
         """Exchange auth code → long-lived token + account id + username.
 
-        Returns (access_token, account_id, username, expires_in_seconds|None).
+        Returns
+        (access_token, account_id, username, expires_in_seconds|None, alias_ids).
+        ``alias_ids`` includes the IG-scoped ``/me`` id used as webhook recipient.id.
         """
         short_token, fallback_user_id = await self._exchange_short_lived(_normalize_code(code))
         long_token, expires_in = await self._exchange_long_lived(short_token)
-        account_id, username = await self._fetch_profile(long_token, fallback_user_id)
-        return long_token, account_id, username, expires_in
+        account_id, username, alias_ids = await self._fetch_profile(long_token, fallback_user_id)
+        return long_token, account_id, username, expires_in, alias_ids
+
+    async def subscribe_webhooks(self, access_token: str) -> bool:
+        """Subscribe this IG account to app message webhooks (required for auto-replies)."""
+        version = (self._settings.graph_api_version or "v21.0").strip() or "v21.0"
+        fields = (
+            "messages,messaging_postbacks,messaging_seen,messaging_referral,"
+            "message_edit,message_reactions"
+        )
+        url = f"{_GRAPH_HOST}/{version}/me/subscribed_apps"
+        async with httpx.AsyncClient(transport=self._transport, timeout=30.0) as client:
+            response = await client.post(
+                url,
+                params={"subscribed_fields": fields, "access_token": access_token},
+            )
+        if response.status_code >= 400:
+            return False
+        payload = response.json() if response.content else {}
+        return bool(isinstance(payload, dict) and payload.get("success") is True)
 
     async def _exchange_short_lived(self, code: str) -> tuple[str, str]:
         form = {
@@ -148,9 +168,11 @@ class InstagramOAuthClient:
         expires_in = _as_int(payload.get("expires_in"))
         return token, expires_in
 
-    async def _fetch_profile(self, access_token: str, fallback_user_id: str) -> tuple[str, str]:
+    async def _fetch_profile(
+        self, access_token: str, fallback_user_id: str
+    ) -> tuple[str, str, tuple[str, ...]]:
         version = (self._settings.graph_api_version or "v21.0").strip() or "v21.0"
-        fields = "user_id,username,account_type"
+        fields = "id,user_id,username,account_type"
         urls = [f"{_GRAPH_HOST}/{version}/me"]
         if fallback_user_id:
             urls.append(f"{_GRAPH_HOST}/{version}/{fallback_user_id}")
@@ -166,18 +188,18 @@ class InstagramOAuthClient:
                 payload = response.json()
                 if not isinstance(payload, dict) or isinstance(payload.get("error"), dict):
                     continue
-                # Professional account id is user_id; do not use app-scoped id alone.
-                account_id = (
-                    str(payload.get("user_id") or "").strip()
-                    or fallback_user_id
-                    or str(payload.get("id") or "").strip()
-                )
+                igsid = str(payload.get("id") or "").strip()
+                # Professional account id is user_id; keep IG-scoped id as alias.
+                account_id = str(payload.get("user_id") or "").strip() or fallback_user_id or igsid
                 username = str(payload.get("username") or "").strip()
                 if username.isdigit():
                     username = ""
+                aliases = tuple(
+                    dict.fromkeys(a for a in (igsid, fallback_user_id) if a and a != account_id)
+                )
                 if account_id:
-                    return account_id, username
-        return fallback_user_id, ""
+                    return account_id, username, aliases
+        return fallback_user_id, "", ()
 
 
 def _as_int(value: object) -> int | None:

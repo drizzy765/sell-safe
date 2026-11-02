@@ -28,6 +28,7 @@ def check_reply(
     *,
     language: str,
     allowed_prices_kobo: set[int] | None = None,
+    allowed_account_numbers: set[str] | None = None,
     verdict: str | None = None,
 ) -> str:
     """Return the reply if it passes checks, otherwise raise ReplyCheckError."""
@@ -48,10 +49,13 @@ def check_reply(
     if any(phrase in lower for phrase in confirmed_phrases) and verdict != "CONFIRMED":
         raise ReplyCheckError("reply claims payment confirmed without CONFIRMED verdict")
 
-    # Do not expose full account numbers. Checksummed EVM wallets (0x + 40 hex) are allowed.
+    # Block invented account numbers. Shop payout digits from tools are allowlisted.
     without_wallets = re.sub(r"0x[a-fA-F0-9]{40}", "", text)
-    if re.search(r"\b\d{10,}\b", without_wallets):
-        raise ReplyCheckError("reply contains a long number that looks like an account number")
+    allowed = {re.sub(r"\D", "", a) for a in (allowed_account_numbers or set()) if a}
+    for match in re.finditer(r"\b\d{10,}\b", without_wallets):
+        digits = match.group(0)
+        if digits not in allowed:
+            raise ReplyCheckError("reply contains a long number that looks like an account number")
 
     return text
 

@@ -39,7 +39,7 @@ Draft product schema: `name, price_ngn, category, description, variants (size/qt
 ### Import options (build in this order)
 - [x] **A. Import from Instagram posts (primary, P0).** List recent posts as a grid; seller ticks the product posts; Muse reads photo + caption → draft product (price parsed from caption like "₦9,500", "9.5k", "DM for price" → price = null, flagged). Soft-fail if Graph media is blocked — show upload / Drive / skip instead.
 - [x] **B. Upload photos + videos (P0).** Multi-file upload from phone/laptop (images *and* videos). Images → Muse draft; videos stored on the shop media shelf for buyers / dashboard. All files land in **that seller’s** DB namespace.
-- [~] **C. Paste a Google Drive link (P1 → now).** Public Drive folder/file URL saved to shop shelf; UI on Step 2 + dashboard. Full image/video pull via MCP/Drive API next.
+- [x] **C. Paste a Google Drive link (P0).** Public Drive folder/file import via Drive API (`GOOGLE_DRIVE_API_KEY`); filenames like `Honey beans - NGN 6000.jpg` auto-draft + auto-approve into runtime catalog.
 - [ ] **D. Send to WhatsApp (P1).** Seller sends product photos + captions to the Sell-Safe WhatsApp number with "add product" → drafts appear in dashboard.
 - [ ] **E. CSV / Google Sheet upload (P2).** Template columns: name, price_ngn, category, description, image_url, stock. Provide a downloadable template.
 - [x] **Skip Step 2.** Seller can skip import and manage catalog later on the dashboard (Feature 3).
@@ -59,17 +59,23 @@ Acceptance: test shop imports ≥5 products from Instagram posts and ≥3 from p
 
 ---
 
-## Feature 3 — Live dashboard: "See Sell-Safe in action" (P0)
+## Feature 3 — Live dashboard v2 (IG Direct mirror) (P0)
 
-Simplify: one `/dashboard` after connect/confirm. Catalog is first-class — sellers never feel stuck on Step 2.
+Approved mockups: `sellsafe-dashboard-v2/mockups/` (inbox, catalog-home, approve-mode). Spec: `sellsafe-dashboard-v2/DASHBOARD_INBOX_PROMPT.md`.
+
+Simplify: one `/dashboard` after connect/confirm with sidebar (Inbox · Catalog · Orders · Outreach · Settings).
 
 - [x] Seller session via Instagram Login cookie → `/dashboard` (no separate email login for hackathon).
-- [x] **Catalog section (P0):** `/dashboard?tab=catalog` lists approved products + shop media shelf; add images/videos; Drive link; delete shelf items; jump to import/review. This is the “do it later” path when Step 2 is skipped.
-- [~] **Live inbox:** list of conversations (Instagram + WhatsApp), each showing buyer message, Sell-Safe reply, timestamps, language detected. *(demo/seeded data first; live webhook wiring next)*
-- [~] **Receipt panel:** each receipt/bank alert checked → verdict (Verified / Suspicious / Fake), extracted amount, reasons, screenshot thumbnail. *(demo fixtures first)*
-- [ ] **Take over / hand back** toggle per chat (pause bot, seller replies manually).
-- [x] **Stats strip:** chats today, orders, ₦ verified, fakes caught, avg reply time *(demo numbers when empty)*.
-- [x] **Demo mode:** for new shops with no traffic, replay seeded sample chats (Pidgin order, Yoruba question, fake receipt caught) so judges/new sellers instantly see it working. Clearly labeled "Demo data".
+- [x] **Catalog home (P0):** IG-style product grid, stats, green Muse/AUTO pill, Add products menu (Instagram / upload / Drive), skip banner when Step 2 skipped.
+- [x] **Live Instagram inbox (P0):** mirrors real DMs from webhook → `messages` only. Empty account → IG-style “No messages yet”. **No fake demo chats by default.**
+- [x] **Reply modes (P0):** AUTO | APPROVE | SMART (Settings + thread pill). APPROVE → dashed draft bubble with Approve & send / Edit / Reject.
+- [x] **Take over / hand back** per chat (pauses AI).
+- [x] **Product card bubbles** + `send_image` when catalog returns an HTTP image URL.
+- [~] **Receipt verdict pills** on payment screenshots (verify path exists; dashboard receipts still Settings demo-only until verdicts are queried).
+- [x] **Stats strip:** chats today, orders, ₦ verified, fakes caught (real zeros when quiet — not demo filler).
+- [x] **Demo mode:** Settings toggle only; labeled Demo; never replaces an empty real inbox.
+- [ ] **Outreach (P1):** seller-picked one-at-a-time pitches → ig.me/m/… (after Nov 7 if needed).
+- [ ] **Orders board (backlog):** after benchmark.
 
 ### UX shortcuts (must stay true)
 1. Connect Instagram → Confirm shop → **optional** import → Dashboard.
@@ -77,7 +83,12 @@ Simplify: one `/dashboard` after connect/confirm. Catalog is first-class — sel
 3. From dashboard Catalog: upload image/video or paste Drive link without redoing onboarding.
 4. Never block on Instagram Graph media failures — offer upload / Drive / skip.
 
-Acceptance: DM the test shop from a personal account → message + Sell-Safe reply appear in the dashboard within seconds; a fake receipt shows as flagged. New seller can skip Step 2, open dashboard Catalog, upload 3 photos, approve, and see them listed.
+Acceptance (`@sellsafe.testshop.ng`):
+1. No DMs → empty IG inbox (no fake chats).
+2. DM “how much be honey beans?” → appears in seconds → AUTO replies with photo + ₦6,000 (after Drive/catalog approve).
+3. Switch APPROVE → next reply is a draft; Approve sends to Instagram.
+4. Fake receipt → Suspicious badge (verify path).
+5. Pitch flow → P1.
 
 ---
 

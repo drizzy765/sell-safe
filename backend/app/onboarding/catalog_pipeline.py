@@ -14,7 +14,7 @@ from app.db.onboarding_catalog_store import (
     ProductDraft,
 )
 from app.llm.base import LLMProvider
-from app.onboarding.price_parse import parse_caption_price_ngn
+from app.onboarding.price_parse import parse_caption_price_ngn, parse_filename_product
 
 
 def _norm_name(name: str) -> str:
@@ -67,23 +67,31 @@ async def build_draft(
     source_ref: str,
     provider: LLMProvider | None,
     store: OnboardingCatalogStore,
+    filename: str = "",
 ) -> ProductDraft:
     caption_price, caption_flags = parse_caption_price_ngn(caption)
-    name = ""
+    file_name, file_price = parse_filename_product(filename or source_ref or "")
+    name = file_name or ""
     description = (caption or "").strip()[:500]
     category = ""
     confidence = 0.35
     variants: list[str] = []
-    price_ngn = caption_price
+    price_ngn = file_price if file_price is not None else caption_price
     flags = list(caption_flags)
+    if file_price is not None:
+        flags = [f for f in flags if f != "missing_price"]
+        confidence = max(confidence, 0.92)
 
-    if provider is not None and image:
+    # Filename already has name+price (Drive convention) — skip vision.
+    skip_vision = bool(file_name and file_price is not None)
+
+    if provider is not None and image and not skip_vision:
         try:
             extracted = await extract_catalog(provider, image)
         except Exception:
             extracted = AskSeller()
         if not isinstance(extracted, AskSeller):
-            name = extracted.name.strip()
+            name = extracted.name.strip() or name
             description = extracted.description.strip() or description
             category = extracted.category.strip()
             confidence = float(extracted.confidence)
@@ -131,43 +139,52 @@ async def build_draft(
     return store.upsert(draft)
 
 
-def publish_to_catalog_store(catalog: object, draft: ProductDraft) -> dict | None:
+def publish_to_catalog_store(
+    catalog: object,
+    draft: ProductDraft,
+    *,
+    alias_seller_ids: list[str] | None = None,
+) -> dict | None:
     """Write an approved draft into the runtime CatalogStore used by buyer chat."""
     if draft.price_ngn is None:
         return None
+    seller_ids = [draft.seller_id]
+    for extra in alias_seller_ids or []:
+        extra = (extra or "").strip()
+        if extra and extra not in seller_ids:
+            seller_ids.append(extra)
+
+    published: dict | None = None
+    upsert = getattr(catalog, "upsert_product", None)
     products = getattr(catalog, "products", None)
-    if not isinstance(products, list):
-        # Supabase path not wired for onboarding approve in this slice.
-        return {
-            "id": draft.id,
-            "seller_id": draft.seller_id,
+    for seller_id in seller_ids:
+        product = {
+            "id": draft.id if seller_id == draft.seller_id else f"{draft.id}:{seller_id}",
+            "seller_id": seller_id,
             "name": draft.name,
             "description": draft.description,
-            "price_kobo": draft.price_ngn * 100,
+            "price_kobo": int(draft.price_ngn) * 100,
             "image_path": draft.image_urls[0] if draft.image_urls else "",
             "category": draft.category,
+            "source": draft.source,
+            "source_ref": draft.source_ref,
+            "stock": 0 if draft.stock_status == "out_of_stock" else 1,
+            "active": draft.stock_status != "out_of_stock",
         }
-    # Replace existing product with same source_ref if present.
-    products[:] = [
-        p
-        for p in products
-        if not (
-            p.get("seller_id") == draft.seller_id
-            and p.get("source_ref") == draft.source_ref
-            and p.get("source") == draft.source
-        )
-    ]
-    product = {
-        "id": draft.id,
-        "seller_id": draft.seller_id,
-        "name": draft.name,
-        "description": draft.description,
-        "price_kobo": int(draft.price_ngn) * 100,
-        "image_path": draft.image_urls[0] if draft.image_urls else "",
-        "category": draft.category,
-        "source": draft.source,
-        "source_ref": draft.source_ref,
-        "active": True,
-    }
-    products.append(product)
-    return product
+        if callable(upsert):
+            published = upsert(product)
+        elif isinstance(products, list):
+            products[:] = [
+                p
+                for p in products
+                if not (
+                    p.get("seller_id") == seller_id
+                    and p.get("source_ref") == draft.source_ref
+                    and p.get("source") == draft.source
+                )
+            ]
+            products.append(product)
+            published = product
+        else:
+            published = product
+    return published

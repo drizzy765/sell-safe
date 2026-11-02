@@ -21,6 +21,7 @@ ALLOWED_LANGS = {"en", "pcm", "yo"}
 
 class ShopUpdateRequest(BaseModel):
     name: str | None = None
+    handle: str | None = None
     bio: str | None = None
     category: str | None = None
     website: str | None = None
@@ -265,6 +266,14 @@ async def patch_shop(
         value = getattr(body, field)
         if value is not None:
             setattr(shop, field, value.strip() if isinstance(value, str) else value)
+
+    if body.handle is not None:
+        cleaned = _clean_handle(body.handle)
+        if cleaned:
+            shop.handle = cleaned
+            # Keep OAuth session label aligned with the shop the seller confirmed.
+            if not (session.username or "").strip():
+                session.username = cleaned
 
     if body.account_number is not None:
         cleaned = "".join(ch for ch in body.account_number if ch.isdigit())

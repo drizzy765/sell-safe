@@ -14,12 +14,30 @@ from app.channels.instagram.oauth import (
     build_authorize_url,
     oauth_configured,
 )
+from app.config import get_settings
 from app.db.instagram_session_store import InstagramSessionStore
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram-oauth"])
 
 SESSION_HEADER = "X-IG-Session"
 DEFAULT_RETURN_TO = "/?platform=instagram"
+
+
+def _fresh_oauth_settings(request: Request):
+    """Re-read public OAuth URLs from .env so stale tunnel hosts are not reused.
+
+    Do not overwrite app id/secret from a blank env read — that blanks
+    credentials injected by unit tests (and returns 503 for oauth/start).
+    """
+    current = request.app.state.settings
+    fresh = get_settings()
+    if (fresh.instagram_oauth_redirect_uri or "").strip():
+        current.instagram_oauth_redirect_uri = fresh.instagram_oauth_redirect_uri
+    if (fresh.app_base_url or "").strip():
+        current.app_base_url = fresh.app_base_url
+    if (fresh.web_base_url or "").strip():
+        current.web_base_url = fresh.web_base_url
+    return current
 
 
 class InstagramStatusResponse(BaseModel):
@@ -31,6 +49,34 @@ class InstagramStatusResponse(BaseModel):
     account_id: str | None = None
     ready: bool = False
     detail: str | None = None
+    graph_username: str | None = None
+
+
+async def _graph_username(access_token: str, transport=None) -> str | None:
+    """Resolve the live Graph username for a session token (no token returned)."""
+    token = (access_token or "").strip()
+    if not token:
+        return None
+    import httpx
+
+    # Always use a real network client for Graph — app.state.transport may be an
+    # ASGI test transport that cannot reach graph.instagram.com.
+    del transport
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                "https://graph.instagram.com/v23.0/me",
+                params={"fields": "user_id,username,account_type", "access_token": token},
+            )
+        if response.status_code >= 400:
+            return None
+        payload = response.json()
+        name = str(payload.get("username") or "").strip()
+        if name.isdigit():
+            return None
+        return name or None
+    except Exception:
+        return None
 
 
 class OAuthStartResponse(BaseModel):
@@ -82,7 +128,7 @@ def _session_id(
 
 
 @router.get("/status", response_model=InstagramStatusResponse)
-def instagram_status(
+async def instagram_status(
     request: Request,
     x_ig_session: str | None = Header(default=None, alias=SESSION_HEADER),
 ) -> InstagramStatusResponse:
@@ -91,12 +137,27 @@ def instagram_status(
     session_id = _session_id(request, x_ig_session)
     session = _sessions(request).get(session_id) if session_id else None
     if session is not None:
+        # Prefer the live OAuth session token for outbound replies so we do not
+        # accidentally send as a different IG account from .env.
+        settings.instagram_access_token = session.access_token
+        graph_username: str | None = None
+        env_username = (getattr(settings, "instagram_username", "") or "").strip().lstrip("@")
+        if not (session.username or "").strip():
+            # Prefer env handle over a slow Graph /me call (often code-100 in Dev).
+            if env_username and not env_username.isdigit():
+                session.username = env_username
+            else:
+                transport = getattr(request.app.state, "transport", None)
+                graph_username = await _graph_username(session.access_token, transport=transport)
+                if graph_username:
+                    session.username = graph_username
         return InstagramStatusResponse(
             connected=True,
             oauth_configured=configured,
-            username=session.username or None,
+            username=session.username or graph_username or env_username or None,
             account_id=session.account_id,
             ready=True,
+            graph_username=graph_username or session.username or env_username or None,
         )
     detail = None
     if not configured:
@@ -121,7 +182,7 @@ def oauth_start(
     redirect: bool = Query(default=False),
 ) -> OAuthStartResponse | RedirectResponse:
     """Create CSRF state and return (or redirect to) the Instagram authorize URL."""
-    settings = request.app.state.settings
+    settings = _fresh_oauth_settings(request)
     if not oauth_configured(settings):
         raise HTTPException(
             status_code=503,
@@ -148,7 +209,7 @@ async def oauth_exchange(
     request: Request,
 ) -> OAuthExchangeResponse:
     """Exchange the OAuth code for a long-lived token; return opaque session id."""
-    settings = request.app.state.settings
+    settings = _fresh_oauth_settings(request)
     if not oauth_configured(settings):
         raise HTTPException(status_code=503, detail="Instagram OAuth is not configured.")
     consumed = _sessions(request).consume_state(body.state)
@@ -157,8 +218,9 @@ async def oauth_exchange(
             status_code=400,
             detail="Invalid or expired OAuth state. Start Connect Instagram again.",
         )
+    client = _oauth_client(request)
     try:
-        access_token, account_id, username, expires_in = await _oauth_client(request).exchange_code(
+        access_token, account_id, username, expires_in, alias_ids = await client.exchange_code(
             body.code
         )
     except InstagramOAuthError as exc:
@@ -168,7 +230,13 @@ async def oauth_exchange(
         account_id=account_id,
         username=username,
         expires_in=expires_in,
+        alias_ids=alias_ids,
     )
+    # Without subscribed_apps, Meta never POSTs DMs — inbox sync works but no auto-reply.
+    await client.subscribe_webhooks(access_token)
+    settings.instagram_access_token = access_token
+    if account_id:
+        settings.instagram_account_id = account_id
     return OAuthExchangeResponse(
         session_id=session_id,
         username=username,
@@ -187,7 +255,7 @@ async def oauth_callback(
     error_description: str | None = None,
 ) -> RedirectResponse:
     """Optional backend callback when redirect_uri points at FastAPI."""
-    settings = request.app.state.settings
+    settings = _fresh_oauth_settings(request)
     web_base = (settings.web_base_url or "").rstrip("/")
     if not web_base:
         raise HTTPException(
@@ -210,10 +278,9 @@ async def oauth_callback(
     if consumed is None:
         return _to_web(ig_error="invalid_state")
 
+    client = _oauth_client(request)
     try:
-        access_token, account_id, username, expires_in = await _oauth_client(request).exchange_code(
-            code
-        )
+        access_token, account_id, username, expires_in, alias_ids = await client.exchange_code(code)
     except InstagramOAuthError as exc:
         return _to_web(ig_error=str(exc)[:180])
 
@@ -222,7 +289,12 @@ async def oauth_callback(
         account_id=account_id,
         username=username,
         expires_in=expires_in,
+        alias_ids=alias_ids,
     )
+    await client.subscribe_webhooks(access_token)
+    settings.instagram_access_token = access_token
+    if account_id:
+        settings.instagram_account_id = account_id
     dest = consumed.return_to if consumed.return_to.startswith("/") else DEFAULT_RETURN_TO
     return _to_web(session_id=session_id, ig_user=username, return_to=dest)
 

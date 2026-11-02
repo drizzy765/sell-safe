@@ -37,6 +37,13 @@ def _system_prompt(
         "You have access to the following tools. Use them when needed.",
         "If a tool result includes crypto_instructions, copy that sentence exactly.",
         "Do not invent a wallet address or a USDC amount.",
+        "When the buyer asks for account number / how to pay, call get_payment_details.",
+        "If payment_details.configured is true, share bank_name, "
+        "account_name, and account_number exactly.",
+        "If configured is false, say the shop has not added transfer "
+        "details yet — do not ask for a receipt first.",
+        "Never invent bank account numbers. Never ask for a transfer "
+        "receipt before sharing pay-to details.",
         json.dumps(tools, ensure_ascii=False),
     ]
     if order:
@@ -100,6 +107,7 @@ async def sales_agent(
     messages = [{"role": "system", "content": system}] + _history_messages(state.history)
 
     allowed_prices: set[int] = set()
+    allowed_accounts: set[str] = set()
     tool_call_count = 0
 
     while state.steps < _MAX_STEPS and tool_call_count < _MAX_TOOL_CALLS:
@@ -137,6 +145,7 @@ async def sales_agent(
                     price = output.get("price_kobo")
                     if price is not None:
                         allowed_prices.add(int(price))
+                    _collect_allowed_accounts(output, allowed_accounts)
             tool_call_payloads = [tc.model_dump() for tc in result.tool_calls]
             messages.append(
                 {
@@ -155,6 +164,7 @@ async def sales_agent(
                 result.text,
                 language=state.language,
                 allowed_prices_kobo=allowed_prices or None,
+                allowed_account_numbers=allowed_accounts or None,
                 verdict=state.verdict.get("verdict") if state.verdict else None,
             )
             return state
@@ -182,19 +192,147 @@ def _dispatch_tool(
     return order_tools.dispatch(name, arguments)
 
 
+def _collect_allowed_accounts(output: dict, allowed: set[str]) -> None:
+    """Allowlist shop payout digits returned by payment tools."""
+    direct = output.get("account_number")
+    if isinstance(direct, str) and direct.strip():
+        allowed.add("".join(ch for ch in direct if ch.isdigit()))
+    nested = output.get("payment_details")
+    if isinstance(nested, dict):
+        nested_acct = nested.get("account_number")
+        if isinstance(nested_acct, str) and nested_acct.strip():
+            allowed.add("".join(ch for ch in nested_acct if ch.isdigit()))
+
+
+def _product_from_tools(state: State) -> dict | None:
+    """Pick the best catalog hit from this turn's tool results for a product card."""
+    best: dict | None = None
+    for call in state.tool_calls:
+        result = call.get("result")
+        rows: list[dict] = []
+        if isinstance(result, list):
+            rows = [r for r in result if isinstance(r, dict)]
+        elif isinstance(result, dict) and result.get("price_kobo") is not None:
+            rows = [result]
+        for row in rows:
+            if row.get("price_kobo") is None:
+                continue
+            image = str(row.get("image_path") or row.get("image_url") or "")
+            candidate = {
+                "id": row.get("id"),
+                "name": row.get("name") or "Product",
+                "price_kobo": int(row["price_kobo"]),
+                "price_ngn": int(row["price_kobo"]) // 100,
+                "image_url": image,
+                "description": row.get("description") or "",
+                "stock": row.get("stock"),
+                "active": row.get("active", True),
+            }
+            if best is None or (image and not best.get("image_url")):
+                best = candidate
+    return best
+
+
+def _needs_smart_approval(
+    state: State,
+    *,
+    product: dict | None,
+    smart_threshold_ngn: int,
+) -> bool:
+    text = (state.reply or "").lower()
+    if any(word in text for word in ("discount", "refund", "owo pada", "slash price")):
+        return True
+    if state.intent in {"payment_proof", "complaint"}:
+        return True
+    if product and int(product.get("price_ngn") or 0) >= int(smart_threshold_ngn or 0):
+        return True
+    return False
+
+
 async def respond(
     state: State,
     adapter: ChannelAdapter,
     sender_id: str,
     store: EchoStore,
+    *,
+    inbox_control: object | None = None,
+    reply_mode: str = "auto",
+    smart_threshold_ngn: int = 50_000,
 ) -> State:
     state.bump()
-    await adapter.send_text(sender_id, state.reply)
+    if not (state.reply or "").strip():
+        return state
+
+    product = _product_from_tools(state)
+    if product and product.get("active") is False:
+        # Out of stock — keep text reply (sales_agent should already say so).
+        product = None
+
+    mode = (reply_mode or "auto").lower()
+    if inbox_control is not None:
+        ctrl = inbox_control.get_control(state.seller_id, state.buyer_id)
+        if ctrl.paused:
+            # Seller took over — do not send AI replies.
+            return state
+        if ctrl.reply_mode:
+            mode = ctrl.reply_mode.lower()
+
+    needs_approval = mode == "approve" or (
+        mode == "smart"
+        and _needs_smart_approval(state, product=product, smart_threshold_ngn=smart_threshold_ngn)
+    )
+
+    if needs_approval and inbox_control is not None:
+        inbox_control.create_reply_draft(
+            seller_id=state.seller_id,
+            buyer_id=state.buyer_id,
+            buyer_external_id=sender_id,
+            channel=state.channel,
+            customer_text=state.message.text or "",
+            draft_text=state.reply,
+            mode=mode,
+            product=product,
+        )
+        # Persist a local draft bubble so the dashboard thread shows it immediately.
+        store.save_outbound(
+            seller_id=state.seller_id,
+            buyer_id=state.buyer_id,
+            channel=state.channel,
+            external_msg_id=f"draft-{state.trace_id}",
+            text=state.reply,
+            message_type="draft",
+            media_path=(product or {}).get("image_url") or None,
+            meta={"status": "pending", "mode": mode, "product": product},
+        )
+        return state
+
+    meta = {"mode": mode}
+    if product:
+        meta["product"] = product
+
+    # Prefer photo + caption when catalog returned an image URL (http/https).
+    image_url = (product or {}).get("image_url") or ""
+    sent_image = False
+    if image_url.startswith("http://") or image_url.startswith("https://"):
+        send_image = getattr(adapter, "send_image", None)
+        if callable(send_image):
+            try:
+                await send_image(sender_id, image_url, state.reply)
+                sent_image = True
+            except Exception:
+                sent_image = False
+
+    if not sent_image:
+        await adapter.send_text(sender_id, state.reply)
+
     store.save_outbound(
         seller_id=state.seller_id,
         buyer_id=state.buyer_id,
         channel=state.channel,
         external_msg_id=f"out-{state.trace_id}",
         text=state.reply,
+        message_type="product" if product else "text",
+        media_path=image_url or None,
+        meta=meta,
     )
     return state

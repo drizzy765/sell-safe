@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     whatsapp_business_account_id: str = ""
     instagram_account_id: str = ""
     instagram_access_token: str = ""
+    # Optional @handle fallback when Graph /me username is unavailable.
+    instagram_username: str = ""
     # Instagram product App ID (Instagram → API setup with Instagram login).
     # Not META_APP_ID — using the Facebook app id causes "Invalid platform app".
     instagram_app_id: str = ""
@@ -59,6 +61,11 @@ class Settings(BaseSettings):
     instagram_oauth_redirect_uri: str = ""
     instagram_oauth_scopes: str = "instagram_business_basic,instagram_business_manage_messages"
     web_base_url: str = ""
+    # Official Sell-Safe IG (sellsafe.ng): comma-separated Graph / Messaging ids.
+    # DMs here get a connect/marketing reply only — never a seller catalog.
+    sellsafe_official_ig_account_ids: str = ""
+    # Public marketing site linked from the official-page reply.
+    sellsafe_site_url: str = "https://sellsafe.ng"
     fb_page_id: str = ""
     fb_page_access_token: str = ""
     graph_api_version: str = ""
@@ -81,6 +88,9 @@ class Settings(BaseSettings):
     crypto_min_confirmations: int = 3
     crypto_explorer_url: str = "https://sepolia.basescan.org"
     demo_real_tx_hash: str = ""
+
+    # Public Google Drive folder import (Drive API key; folder must be link-shared).
+    google_drive_api_key: str = ""
 
 
 def get_settings() -> Settings:

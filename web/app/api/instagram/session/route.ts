@@ -14,7 +14,14 @@ export async function GET(request: Request) {
   const igError = incoming.searchParams.get("ig_error");
 
   const returnTo = returnToRaw.startsWith("/") ? returnToRaw : "/?platform=instagram";
-  const dest = new URL(returnTo, incoming.origin);
+  // Prefer public host when behind Cloudflare/ngrok so redirects aren't localhost.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto =
+    request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+  const publicOrigin =
+    process.env.WEB_BASE_URL?.replace(/\/$/, "") ||
+    (forwardedHost ? `${forwardedProto}://${forwardedHost}` : incoming.origin);
+  const dest = new URL(returnTo, publicOrigin);
 
   if (igError) {
     dest.searchParams.set("ig_error", igError);

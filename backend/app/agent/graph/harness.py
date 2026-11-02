@@ -4,6 +4,11 @@ from app.agent.graph.nodes import observe, respond, route, sales_agent
 from app.agent.graph.seller_cmd import seller_command_agent
 from app.agent.graph.state import State
 from app.agent.graph.verify import verify_payment_turn
+from app.agent.official_page import (
+    connect_reply_for_settings,
+    is_official_ig_account,
+    official_ids_from_settings,
+)
 from app.agent.tools.catalog import CatalogTools
 from app.agent.tools.orders import OrderTools
 from app.channels.base import ChannelAdapter, InboundMessage
@@ -31,6 +36,11 @@ async def run_turn(
     fraud_store: FraudStore | None = None,
     pii_salt: str = "",
     business_name: str | None = None,
+    inbox_control: object | None = None,
+    reply_mode: str = "auto",
+    smart_threshold_ngn: int = 50_000,
+    settings: object | None = None,
+    shop_store: object | None = None,
 ) -> State:
     """Run one inbound turn through the agent graph."""
     state = State(
@@ -42,18 +52,57 @@ async def run_turn(
         message=message,
     )
 
+    if inbox_control is not None:
+        ctrl = inbox_control.get_control(seller_id, buyer_id)
+        if ctrl.paused:
+            # Seller is handling this chat manually.
+            return state
+
+    # Official Sell-Safe IG: connect/marketing only — never catalog or payments.
+    if (
+        message.channel == "instagram"
+        and settings is not None
+        and is_official_ig_account(seller_id, official_ids=official_ids_from_settings(settings))
+    ):
+        state.intent = "official_connect"
+        state.language = "en"
+        state.reply = connect_reply_for_settings(settings)
+        state = await respond(
+            state,
+            channel_adapter,
+            message.sender_id,
+            store,
+            inbox_control=inbox_control,
+            reply_mode="auto",
+            smart_threshold_ngn=smart_threshold_ngn,
+        )
+        return state
+
     state = observe(state, store)
     seller_language = store.get_seller_language(seller_id)
     state = await route(state, jev, seller_language)
 
     catalog_tools = CatalogTools(seller_id, catalog_store)
     seller = store.get_seller(seller_id) or {}
+    bank_name = ""
+    account_name = ""
+    account_number = ""
+    shop = _resolve_shop(shop_store, store, seller_id, seller)
+    if shop is not None:
+        bank_name = str(getattr(shop, "bank_name", "") or "")
+        account_name = str(getattr(shop, "account_name", "") or "")
+        account_number = str(getattr(shop, "account_number", "") or "")
+        if not business_name:
+            business_name = str(getattr(shop, "name", "") or "") or None
     order_tools = OrderTools(
         seller_id,
         buyer_id,
         order_store,
         crypto_wallet=str(seller.get("crypto_wallet") or ""),
         crypto_network=str(seller.get("crypto_network") or "base-sepolia"),
+        bank_name=bank_name,
+        account_name=account_name,
+        account_number=account_number,
     )
 
     if state.intent in ("price_question", "order", "chit_chat"):
@@ -100,8 +149,43 @@ async def run_turn(
     else:
         state.reply = fallback_for_language(state.language, "unknown")
 
-    state = await respond(state, channel_adapter, message.sender_id, store)
+    state = await respond(
+        state,
+        channel_adapter,
+        message.sender_id,
+        store,
+        inbox_control=inbox_control,
+        reply_mode=reply_mode,
+        smart_threshold_ngn=smart_threshold_ngn,
+    )
     return state
+
+
+def _resolve_shop(
+    shop_store: object | None,
+    store: EchoStore,
+    seller_id: str,
+    seller: dict,
+) -> object | None:
+    """Find the connected shop profile for payout details."""
+    if shop_store is None:
+        return None
+    shop_id = str(seller.get("shop_id") or "").strip()
+    if shop_id and hasattr(shop_store, "get"):
+        found = shop_store.get(shop_id)
+        if found is not None:
+            return found
+    if hasattr(shop_store, "get_by_ig_account"):
+        found = shop_store.get_by_ig_account(seller_id)
+        if found is not None:
+            return found
+        # Seller row may be the IG-scoped id while shop is keyed by user_id (or vice versa).
+        for key, value in (seller.get("channel_ids") or {}).items():
+            if str(key).startswith("instagram") or key == "instagram":
+                alt = shop_store.get_by_ig_account(str(value))
+                if alt is not None:
+                    return alt
+    return None
 
 
 def fallback_for_language(language: str, kind: str) -> str:

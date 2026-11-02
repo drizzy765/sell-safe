@@ -22,6 +22,8 @@ class CatalogStore(Protocol):
 
     def get_product(self, seller_id: str, product_id: str) -> dict | None: ...
 
+    def upsert_product(self, product: dict) -> dict: ...
+
 
 class MemoryCatalogStore:
     def __init__(self) -> None:
@@ -86,6 +88,31 @@ class MemoryCatalogStore:
             if p["id"] == product_id and p["seller_id"] == seller_id:
                 return p
         return None
+
+    def upsert_product(self, product: dict) -> dict:
+        seller_id = str(product.get("seller_id") or "")
+        source = product.get("source")
+        source_ref = product.get("source_ref")
+        product_id = str(product.get("id") or uuid4())
+        kept: list[dict] = []
+        for existing in self.products:
+            same_id = existing.get("id") == product_id and existing.get("seller_id") == seller_id
+            same_source = (
+                source
+                and source_ref
+                and existing.get("seller_id") == seller_id
+                and existing.get("source") == source
+                and existing.get("source_ref") == source_ref
+            )
+            if same_id or same_source:
+                continue
+            kept.append(existing)
+        row = dict(product)
+        row["id"] = product_id
+        row.setdefault("active", True)
+        kept.append(row)
+        self.products = kept
+        return row
 
 
 def _is_pending(draft: dict, seller_id: str, buyer_id: str) -> bool:
@@ -186,6 +213,29 @@ class SupabaseCatalogStore:
         )
         rows = found.data or []
         return rows[0] if rows else None
+
+    def upsert_product(self, product: dict) -> dict:
+        seller_id = str(product.get("seller_id") or "")
+        product_id = str(product.get("id") or uuid4())
+        payload = {
+            "id": product_id,
+            "seller_id": seller_id,
+            "name": product.get("name") or "Product",
+            "description": product.get("description") or "",
+            "price_kobo": int(product.get("price_kobo") or 0),
+            "image_path": product.get("image_path") or "",
+            "currency": "NGN",
+            "stock": int(product.get("stock") or 0),
+            "active": bool(product.get("active", True)),
+        }
+        existing = (
+            self._client.table("products").select("id").eq("id", product_id).limit(1).execute()
+        )
+        if existing.data:
+            (self._client.table("products").update(payload).eq("id", product_id).execute())
+        else:
+            self._client.table("products").insert(payload).execute()
+        return payload
 
 
 def build_catalog_store(settings: object) -> SupabaseCatalogStore:

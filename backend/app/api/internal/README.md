@@ -20,10 +20,19 @@ Internal routes (require `X-Internal-Token` unless noted):
 | GET | `/api/onboarding/catalog/media` | Feature 2A: recent IG posts for import |
 | POST | `/api/onboarding/catalog/import/instagram` | Feature 2A: draft selected media ids |
 | POST | `/api/onboarding/catalog/import/upload` | Feature 2B: draft uploaded images (base64) |
+| POST | `/api/onboarding/catalog/import/drive` | Drive folder import (`GOOGLE_DRIVE_API_KEY`; `Name - NGN price.jpg`) |
 | GET | `/api/onboarding/catalog/drafts` | Feature 2 review list |
 | PATCH/DELETE | `/api/onboarding/catalog/drafts/{id}` | Edit or delete a draft |
 | POST | `/api/onboarding/catalog/drafts/approve` | Approve drafts into buyer catalog |
 | GET | `/api/onboarding/catalog/products` | Approved products for the shop |
+| GET | `/api/onboarding/catalog/shelf` | Shop media shelf |
+| GET | `/api/dashboard/summary` | Dashboard v2 summary (real inbox; demo opt-in) |
+| GET | `/api/dashboard/inbox` | Real Instagram conversations |
+| GET | `/api/dashboard/inbox/{buyer_id}` | Thread messages + drafts |
+| POST | `/api/dashboard/inbox/{buyer_id}/takeover` | Pause / hand back AI |
+| POST | `/api/dashboard/inbox/{buyer_id}/send` | Seller manual reply |
+| POST | `/api/dashboard/drafts/{id}/approve\|reject\|edit` | APPROVE-mode draft actions |
+| PATCH | `/api/dashboard/settings` | reply_mode, demo_mode, threshold |
 | POST | `/api/sellers/crypto-wallet` | Save checksummed seller USDC wallet (optional onboarding) |
 | GET | `/api/demo/crypto` | Live Base Sepolia: real / reused / fake hash verdicts (`DEMO_REAL_TX_HASH`) |
 | * | `/orders/...` | Order release helpers |

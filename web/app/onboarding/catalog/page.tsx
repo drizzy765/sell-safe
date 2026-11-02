@@ -146,13 +146,13 @@ export default function OnboardingCatalogPage() {
         next?: string;
       };
       if (!response.ok) {
-        setError(body.detail || "Could not save Drive link.");
+        setError(body.detail || "Could not import Drive folder.");
         setDriveBusy(false);
         return;
       }
       router.push(body.next || "/dashboard?tab=catalog");
     } catch {
-      setError("Could not save Drive link.");
+      setError("Could not import Drive folder.");
       setDriveBusy(false);
     }
   }
@@ -165,7 +165,7 @@ export default function OnboardingCatalogPage() {
             <SellSafeLogo height={26} />
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="font-medium text-primary">
+            <Link href="/dashboard?tab=catalog&skipped=1" className="font-medium text-primary">
               Skip to dashboard
             </Link>
             <Link href="/onboarding/shop" className="text-muted-foreground hover:text-foreground">
@@ -196,7 +196,7 @@ export default function OnboardingCatalogPage() {
 
         <div className="mb-8 flex flex-wrap gap-3">
           <Link
-            href="/dashboard?tab=catalog"
+            href="/dashboard?tab=catalog&skipped=1"
             className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
           >
             Skip — open dashboard catalog
@@ -228,9 +228,13 @@ export default function OnboardingCatalogPage() {
 
         <section className="mb-8 rounded-xl border border-border p-5">
           <h2 className="mb-2 text-lg font-semibold">Google Drive link</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Paste a shared Drive folder or file link. We save it to your shop now; full image/video
-            pull via Drive MCP comes next.
+          <p className="mb-2 text-sm text-muted-foreground">
+            Paste a folder link. Files named like{" "}
+            <code>Honey beans - NGN 6000.jpg</code> import with the price attached.
+          </p>
+          <p className="mb-4 rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            Share → General access → <strong>Anyone with the link</strong> (Viewer). Private
+            folders cannot be imported with the API key.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
@@ -245,7 +249,7 @@ export default function OnboardingCatalogPage() {
               onClick={() => void saveDrive()}
               className="rounded-md border border-border px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
-              {driveBusy ? "Saving…" : "Save link"}
+              {driveBusy ? "Importing…" : "Import folder"}
             </button>
           </div>
         </section>
@@ -300,7 +304,7 @@ export default function OnboardingCatalogPage() {
           >
             {busy ? "Drafting…" : `Draft ${selectedIds.length || ""} selected`}
           </button>
-          <Link href="/dashboard" className="text-sm text-muted-foreground underline">
+          <Link href="/dashboard?tab=catalog&skipped=1" className="text-sm text-muted-foreground underline">
             Skip to dashboard
           </Link>
         </div>

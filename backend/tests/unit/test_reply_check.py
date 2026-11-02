@@ -26,3 +26,15 @@ def test_allows_confirmed_with_verdict() -> None:
 def test_rejects_long_account_number() -> None:
     with pytest.raises(ReplyCheckError):
         check_reply("Send to 1234567890.", language="en")
+
+
+def test_allows_tool_account_number() -> None:
+    reply = "Transfer to Mama Timi / Opay / 1234567890."
+    assert (
+        check_reply(
+            reply,
+            language="en",
+            allowed_account_numbers={"1234567890"},
+        )
+        == reply
+    )
