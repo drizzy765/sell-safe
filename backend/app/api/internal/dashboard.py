@@ -151,9 +151,7 @@ def dashboard_summary(
 
     today_prefix = datetime.now(tz=UTC).date().isoformat()
     chats_today = sum(
-        1
-        for c in conversations
-        if str(c.get("created_at") or "").startswith(today_prefix)
+        1 for c in conversations if str(c.get("created_at") or "").startswith(today_prefix)
     )
 
     return {
@@ -230,9 +228,11 @@ def get_thread(
     if store is None:
         raise HTTPException(status_code=503, detail="Message store unavailable.")
     control.clear_unread(seller_id, buyer_id)
-    messages = store.list_messages(seller_id, buyer_id, limit=200) if hasattr(
-        store, "list_messages"
-    ) else store.recent_messages(seller_id, buyer_id, limit=200)
+    messages = (
+        store.list_messages(seller_id, buyer_id, limit=200)
+        if hasattr(store, "list_messages")
+        else store.recent_messages(seller_id, buyer_id, limit=200)
+    )
     buyer = store.get_buyer_by_id(buyer_id) or {}
     ctrl = control.get_control(seller_id, buyer_id)
     drafts = control.list_drafts(seller_id, buyer_id=buyer_id, status="pending")
@@ -448,5 +448,3 @@ def patch_settings(
             "catalog_skipped": shop.catalog_skipped,
         },
     }
-
-

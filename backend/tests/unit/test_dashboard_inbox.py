@@ -85,9 +85,7 @@ def test_real_dm_appears_in_inbox() -> None:
     assert "honey beans" in rows[0]["preview"]
     assert rows[0].get("demo") is False
 
-    thread = client.get(
-        f"/api/dashboard/inbox/{buyer_id}", headers={"X-IG-Session": session_id}
-    )
+    thread = client.get(f"/api/dashboard/inbox/{buyer_id}", headers={"X-IG-Session": session_id})
     assert thread.status_code == 200
     messages = thread.json()["messages"]
     assert len(messages) == 1

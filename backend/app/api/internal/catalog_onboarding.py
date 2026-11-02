@@ -430,11 +430,7 @@ async def import_drive(
             created.append(draft.public_dict())
 
             # Filename convention already has name+price → auto-approve into runtime catalog.
-            if (
-                draft.price_ngn is not None
-                and draft.name
-                and "missing_price" not in draft.flags
-            ):
+            if draft.price_ngn is not None and draft.name and "missing_price" not in draft.flags:
                 draft.status = "approved"
                 store.upsert(draft)
                 alias = [
@@ -452,9 +448,7 @@ async def import_drive(
             errors.append({"filename": file.name, "detail": str(exc)[:180]})
 
     suffix = (
-        f"; auto-approved {len(auto_approved)} with name+price filenames."
-        if auto_approved
-        else "."
+        f"; auto-approved {len(auto_approved)} with name+price filenames." if auto_approved else "."
     )
     detail = f"Imported {len(created)} product draft(s) from Drive{suffix}"
     return {

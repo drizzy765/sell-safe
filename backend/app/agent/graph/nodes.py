@@ -257,9 +257,7 @@ async def respond(
 
     needs_approval = mode == "approve" or (
         mode == "smart"
-        and _needs_smart_approval(
-            state, product=product, smart_threshold_ngn=smart_threshold_ngn
-        )
+        and _needs_smart_approval(state, product=product, smart_threshold_ngn=smart_threshold_ngn)
     )
 
     if needs_approval and inbox_control is not None:

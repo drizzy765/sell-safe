@@ -229,19 +229,10 @@ class SupabaseCatalogStore:
             "active": bool(product.get("active", True)),
         }
         existing = (
-            self._client.table("products")
-            .select("id")
-            .eq("id", product_id)
-            .limit(1)
-            .execute()
+            self._client.table("products").select("id").eq("id", product_id).limit(1).execute()
         )
         if existing.data:
-            (
-                self._client.table("products")
-                .update(payload)
-                .eq("id", product_id)
-                .execute()
-            )
+            (self._client.table("products").update(payload).eq("id", product_id).execute())
         else:
             self._client.table("products").insert(payload).execute()
         return payload

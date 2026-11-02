@@ -93,9 +93,7 @@ async def list_drive_media(
         while True:
             params: dict[str, str] = {
                 "q": f"'{drive_id}' in parents and trashed=false",
-                "fields": (
-                    "nextPageToken,files(id,name,mimeType,webContentLink,thumbnailLink)"
-                ),
+                "fields": ("nextPageToken,files(id,name,mimeType,webContentLink,thumbnailLink)"),
                 "pageSize": "100",
                 "key": api_key,
                 "supportsAllDrives": "true",
@@ -145,9 +143,7 @@ async def download_drive_file(
             media_url = f"{_DRIVE_API}/files/{file.id}?alt=media&key={api_key}"
             response = await client.get(media_url)
         if response.status_code >= 400:
-            raise DriveImportError(
-                f"Could not download {file.name}: HTTP {response.status_code}"
-            )
+            raise DriveImportError(f"Could not download {file.name}: HTTP {response.status_code}")
         return response.content
 
 

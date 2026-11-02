@@ -103,9 +103,7 @@ class InstagramSessionStore:
             self._purge_locked()
             now = datetime.now(UTC)
             live = [
-                s
-                for s in self._sessions.values()
-                if s.expires_at is None or s.expires_at > now
+                s for s in self._sessions.values() if s.expires_at is None or s.expires_at > now
             ]
             if not live:
                 return None

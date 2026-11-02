@@ -12,7 +12,8 @@ def official_connect_reply(site_url: str) -> str:
         f"1. Open {base}\n"
         "2. Connect your Instagram business account\n"
         "3. Import your catalog (upload or Drive)\n"
-        "4. We automate replies on your shop page — buyers message you, not this official account.\n\n"
+        "4. We automate replies on your shop page — buyers message you, "
+        "not this official account.\n\n"
         f"Start here: {base}"
     )
 

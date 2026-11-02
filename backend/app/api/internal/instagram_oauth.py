@@ -122,17 +122,19 @@ async def instagram_status(
         # Prefer the live OAuth session token for outbound replies so we do not
         # accidentally send as a different IG account from .env.
         settings.instagram_access_token = session.access_token
-        transport = getattr(request.app.state, "transport", None)
-        graph_username = await _graph_username(session.access_token, transport=transport)
-        if graph_username and not session.username:
-            session.username = graph_username
+        graph_username: str | None = None
+        if not (session.username or "").strip():
+            transport = getattr(request.app.state, "transport", None)
+            graph_username = await _graph_username(session.access_token, transport=transport)
+            if graph_username:
+                session.username = graph_username
         return InstagramStatusResponse(
             connected=True,
             oauth_configured=configured,
             username=session.username or graph_username,
             account_id=session.account_id,
             ready=True,
-            graph_username=graph_username,
+            graph_username=graph_username or session.username or None,
         )
     detail = None
     if not configured:

@@ -151,6 +151,7 @@ def test_oauth_exchange_and_disconnect() -> None:
         "account_id": "17840000000000001",
         "ready": True,
         "detail": None,
+        "graph_username": "adasbags",
     }
 
     disconnected = client.post(

@@ -271,9 +271,7 @@ class MemoryEchoStore:
                     "buyer_id": buyer_id,
                     "channel": msg.get("channel") or buyer.get("channel") or "instagram",
                     "buyer_external_id": buyer.get("external_id") or "",
-                    "buyer": buyer.get("display_name")
-                    or buyer.get("external_id")
-                    or buyer_id[:8],
+                    "buyer": buyer.get("display_name") or buyer.get("external_id") or buyer_id[:8],
                     "preview": preview,
                     "direction": msg.get("direction"),
                     "language": msg.get("language") or "",
@@ -472,8 +470,7 @@ class SupabaseEchoStore:
         found = (
             self._client.table("messages")
             .select(
-                "external_msg_id, direction, type, text, intent, language, "
-                "media_path, created_at"
+                "external_msg_id, direction, type, text, intent, language, media_path, created_at"
             )
             .eq("seller_id", seller_id)
             .eq("buyer_id", buyer_id)
@@ -514,9 +511,7 @@ class SupabaseEchoStore:
                     "buyer_id": buyer_id,
                     "channel": msg.get("channel") or buyer.get("channel") or "instagram",
                     "buyer_external_id": buyer.get("external_id") or "",
-                    "buyer": buyer.get("display_name")
-                    or buyer.get("external_id")
-                    or buyer_id[:8],
+                    "buyer": buyer.get("display_name") or buyer.get("external_id") or buyer_id[:8],
                     "preview": preview,
                     "direction": msg.get("direction"),
                     "language": msg.get("language") or "",

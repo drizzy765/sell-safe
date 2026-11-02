@@ -21,9 +21,7 @@ def test_extract_folder_id() -> None:
 
 
 def test_extract_file_id() -> None:
-    kind, drive_id = extract_drive_id(
-        "https://drive.google.com/file/d/file99/view?usp=sharing"
-    )
+    kind, drive_id = extract_drive_id("https://drive.google.com/file/d/file99/view?usp=sharing")
     assert kind == "file"
     assert drive_id == "file99"
 
