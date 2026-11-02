@@ -294,6 +294,7 @@ async def import_upload(
                 source_ref=source_ref,
                 provider=provider,
                 store=store,
+                filename=item.filename,
             )
             draft.image_urls = [data_url]
             store.upsert(draft)
@@ -317,12 +318,17 @@ async def import_drive(
     request: Request,
     x_ig_session: str | None = Header(default=None, alias=SESSION_HEADER),
 ) -> dict:
-    """Accept a Google Drive folder/file URL.
+    """Import a public Google Drive folder/file into drafts + media shelf.
 
-    Full Drive fetch lands via MCP/`drive.readonly` next. For now we validate the
-    URL shape, stash it on the shop media shelf as a pending source, and point
-    the seller at the dashboard catalog.
+    Expects filenames like ``Honey beans - NGN 6000.jpg``. Requires
+    ``GOOGLE_DRIVE_API_KEY`` and a link-shared folder.
     """
+    from app.onboarding.drive_import import (
+        DriveImportError,
+        download_drive_file,
+        list_drive_media,
+    )
+
     _session, shop = _require_shop(request, x_ig_session)
     url = body.folder_url.strip()
     if "drive.google.com" not in url and "docs.google.com" not in url:
@@ -330,8 +336,17 @@ async def import_drive(
             status_code=422,
             detail="Paste a Google Drive folder or file link (drive.google.com).",
         )
+
+    settings = request.app.state.settings
+    api_key = (getattr(settings, "google_drive_api_key", "") or "").strip()
     media_store = _shop_media(request)
-    asset = media_store.add(
+    store = _drafts(request)
+    seller_id = _seller_id(request, shop.ig_account_id)
+    provider = _provider(request)
+    transport = getattr(request.app.state, "transport", None)
+
+    # Always keep the source link on the shelf.
+    link_asset = media_store.add(
         ShopMediaAsset(
             id=MemoryShopMediaStore.new_id(),
             shop_id=shop.id,
@@ -339,18 +354,117 @@ async def import_drive(
             filename="Google Drive link",
             content_type="text/uri-list",
             url=url,
-            caption="Pending Drive import — MCP/Drive sync will pull images & videos",
+            caption="Drive catalog source",
             source="drive",
             source_ref=url,
         )
     )
+
+    try:
+        files = await list_drive_media(url, api_key=api_key, transport=transport)
+    except DriveImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    created: list[dict] = []
+    media_saved: list[dict] = [link_asset.public_dict()]
+    errors: list[dict] = []
+    auto_approved: list[dict] = []
+
+    for file in files:
+        try:
+            if file.is_video:
+                media_store.add(
+                    ShopMediaAsset(
+                        id=MemoryShopMediaStore.new_id(),
+                        shop_id=shop.id,
+                        kind="video",
+                        filename=file.name,
+                        content_type=file.mime_type or "video/mp4",
+                        url=file.download_url(api_key),
+                        caption="",
+                        source="drive",
+                        source_ref=file.id,
+                    )
+                )
+                continue
+
+            blob = await download_drive_file(file, api_key=api_key, transport=transport)
+            mime = file.mime_type or "image/jpeg"
+            data_url = f"data:{mime};base64,{base64.b64encode(blob).decode('ascii')}"
+            # Public view URL for Instagram send_image (data: URLs are not fetchable by Meta).
+            public_url = (
+                file.thumbnail_link.split("=")[0] + "=w1000"
+                if file.thumbnail_link
+                else f"https://drive.google.com/uc?export=view&id={file.id}"
+            )
+            source_ref = f"drive:{file.id}"
+            asset = media_store.add(
+                ShopMediaAsset(
+                    id=MemoryShopMediaStore.new_id(),
+                    shop_id=shop.id,
+                    kind="image",
+                    filename=file.name,
+                    content_type=mime,
+                    url=data_url,
+                    caption=file.name,
+                    source="drive",
+                    source_ref=source_ref,
+                )
+            )
+            media_saved.append(asset.public_dict())
+
+            draft = await build_draft(
+                shop_id=shop.id,
+                seller_id=seller_id,
+                image=blob,
+                image_url=public_url,
+                caption=file.name,
+                source="drive",
+                source_ref=source_ref,
+                provider=provider,
+                store=store,
+                filename=file.name,
+            )
+            draft.image_urls = [public_url, data_url]
+            store.upsert(draft)
+            created.append(draft.public_dict())
+
+            # Filename convention already has name+price → auto-approve into runtime catalog.
+            if (
+                draft.price_ngn is not None
+                and draft.name
+                and "missing_price" not in draft.flags
+            ):
+                draft.status = "approved"
+                store.upsert(draft)
+                alias = [
+                    (getattr(settings, "instagram_account_id", "") or "").strip(),
+                    (shop.ig_account_id or "").strip(),
+                ]
+                published = publish_to_catalog_store(
+                    _catalog(request),
+                    draft,
+                    alias_seller_ids=alias,
+                )
+                if published:
+                    auto_approved.append(draft.public_dict())
+        except Exception as exc:
+            errors.append({"filename": file.name, "detail": str(exc)[:180]})
+
+    suffix = (
+        f"; auto-approved {len(auto_approved)} with name+price filenames."
+        if auto_approved
+        else "."
+    )
+    detail = f"Imported {len(created)} product draft(s) from Drive{suffix}"
     return {
         "accepted": True,
-        "media": [asset.public_dict()],
-        "detail": (
-            "Drive link saved to your shop. Full image/video pull via Drive MCP "
-            "is next — open Dashboard → Catalog to manage media."
-        ),
+        "drafts": created,
+        "approved": auto_approved,
+        "media": media_saved,
+        "errors": errors,
+        "detail": detail,
+        "review": "/onboarding/catalog/review" if created and not auto_approved else None,
         "next": "/dashboard?tab=catalog",
     }
 
@@ -473,7 +587,12 @@ def approve_drafts(
             continue
         draft.status = "approved"
         store.upsert(draft)
-        publish_to_catalog_store(catalog, draft)
+        settings = request.app.state.settings
+        alias = [
+            (getattr(settings, "instagram_account_id", "") or "").strip(),
+            (shop.ig_account_id or "").strip(),
+        ]
+        publish_to_catalog_store(catalog, draft, alias_seller_ids=alias)
         approved.append(draft.public_dict())
 
     return {"approved": approved, "skipped": skipped}

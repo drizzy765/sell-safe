@@ -4,6 +4,11 @@ from app.agent.graph.nodes import observe, respond, route, sales_agent
 from app.agent.graph.seller_cmd import seller_command_agent
 from app.agent.graph.state import State
 from app.agent.graph.verify import verify_payment_turn
+from app.agent.official_page import (
+    connect_reply_for_settings,
+    is_official_ig_account,
+    official_ids_from_settings,
+)
 from app.agent.tools.catalog import CatalogTools
 from app.agent.tools.orders import OrderTools
 from app.channels.base import ChannelAdapter, InboundMessage
@@ -31,6 +36,10 @@ async def run_turn(
     fraud_store: FraudStore | None = None,
     pii_salt: str = "",
     business_name: str | None = None,
+    inbox_control: object | None = None,
+    reply_mode: str = "auto",
+    smart_threshold_ngn: int = 50_000,
+    settings: object | None = None,
 ) -> State:
     """Run one inbound turn through the agent graph."""
     state = State(
@@ -41,6 +50,32 @@ async def run_turn(
         buyer_external_id=message.sender_id,
         message=message,
     )
+
+    if inbox_control is not None:
+        ctrl = inbox_control.get_control(seller_id, buyer_id)
+        if ctrl.paused:
+            # Seller is handling this chat manually.
+            return state
+
+    # Official Sell-Safe IG: connect/marketing only — never catalog or payments.
+    if (
+        message.channel == "instagram"
+        and settings is not None
+        and is_official_ig_account(seller_id, official_ids=official_ids_from_settings(settings))
+    ):
+        state.intent = "official_connect"
+        state.language = "en"
+        state.reply = connect_reply_for_settings(settings)
+        state = await respond(
+            state,
+            channel_adapter,
+            message.sender_id,
+            store,
+            inbox_control=inbox_control,
+            reply_mode="auto",
+            smart_threshold_ngn=smart_threshold_ngn,
+        )
+        return state
 
     state = observe(state, store)
     seller_language = store.get_seller_language(seller_id)
@@ -100,7 +135,15 @@ async def run_turn(
     else:
         state.reply = fallback_for_language(state.language, "unknown")
 
-    state = await respond(state, channel_adapter, message.sender_id, store)
+    state = await respond(
+        state,
+        channel_adapter,
+        message.sender_id,
+        store,
+        inbox_control=inbox_control,
+        reply_mode=reply_mode,
+        smart_threshold_ngn=smart_threshold_ngn,
+    )
     return state
 
 

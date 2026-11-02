@@ -96,7 +96,37 @@ class InstagramAdapter:
         return str(data.get("message_id") or data.get("id") or "")
 
     async def send_image(self, to: str, url: str, caption: str) -> str:
-        raise NotImplementedError
+        """Send an image attachment via Instagram Messaging API."""
+        version = self._settings.graph_api_version
+        body: dict = {
+            "recipient": {"id": to},
+            "message": {
+                "attachment": {
+                    "type": "image",
+                    "payload": {"url": url, "is_reusable": True},
+                }
+            },
+        }
+        login_token = self._settings.instagram_access_token
+        if version and login_token:
+            endpoint = f"{_IG_LOGIN_HOST}/{version}/me/messages"
+            token = login_token
+        else:
+            page_id = self._settings.fb_page_id or self._settings.instagram_account_id
+            token = self._settings.fb_page_access_token
+            if not version or not page_id or not token:
+                raise RuntimeError("Instagram send is not configured")
+            endpoint = f"{_GRAPH_HOST}/{version}/{page_id}/messages"
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(transport=self._transport) as client:
+            response = await client.post(endpoint, json=body, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        message_id = str(data.get("message_id") or data.get("id") or "")
+        if caption and caption.strip():
+            # Messaging API image payload has no caption field — follow with text.
+            await self.send_text(to, caption.strip())
+        return message_id
 
     async def fetch_media(self, media_id: str) -> bytes:
         token = self._settings.fb_page_access_token

@@ -9,6 +9,11 @@ from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from app.agent.graph.harness import run_turn
 from app.agent.graph.verify import verify_payment_turn
 from app.agent.listing import handle_price_reply, handle_product_photo
+from app.agent.official_page import (
+    connect_reply_for_settings,
+    is_official_ig_account,
+    official_ids_from_settings,
+)
 from app.agent.voice import handle_voice_note
 from app.api.webhooks.alerts import router as alerts_router
 from app.api.webhooks.flutterwave import router as flutterwave_router
@@ -198,9 +203,33 @@ def _dispatch_inbound(
         external_msg_id=message.external_id,
         message_type=message.type,
         text=message.text,
+        media_path=message.media_id,
     )
     if not saved:
         return
+    inbox_control = getattr(request.app.state, "inbox_control", None)
+    if inbox_control is not None:
+        inbox_control.mark_inbound(
+            seller_id,
+            buyer_id,
+            at=message.ts.isoformat() if getattr(message, "ts", None) else None,
+        )
+
+    # Official Sell-Safe IG page: connect CTA only (no catalog / payments / listing).
+    if channel == "instagram" and is_official_ig_account(
+        seller_id, official_ids=official_ids_from_settings(settings)
+    ):
+        background.add_task(
+            _reply_official_connect,
+            adapter=adapter,
+            store=store,
+            seller_id=seller_id,
+            buyer_id=buyer_id,
+            sender_id=message.sender_id,
+            reply=connect_reply_for_settings(settings),
+        )
+        return
+
     if message.type == "image":
         catalog = _catalog(request)
         if _orders(request).get_open_order(seller_id, buyer_id):
@@ -283,6 +312,18 @@ def _dispatch_inbound(
                 text=message.text,
             )
         else:
+            reply_mode = "auto"
+            smart_threshold = 50_000
+            business_name = None
+            seller = store.get_seller(seller_id) or {}
+            business_name = seller.get("business_name") or seller.get("name")
+            shops = getattr(request.app.state, "shops", None)
+            if shops is not None and seller.get("shop_id"):
+                shop = shops.get(str(seller["shop_id"]))
+                if shop is not None:
+                    reply_mode = getattr(shop, "reply_mode", None) or "auto"
+                    smart_threshold = int(getattr(shop, "smart_threshold_ngn", 50_000) or 50_000)
+                    business_name = shop.name or business_name
             background.add_task(
                 run_turn,
                 message=message,
@@ -297,7 +338,34 @@ def _dispatch_inbound(
                 payment_store=_payments(request),
                 fraud_store=_fraud(request),
                 pii_salt=settings.pii_salt,
+                business_name=business_name,
+                inbox_control=getattr(request.app.state, "inbox_control", None),
+                reply_mode=reply_mode,
+                smart_threshold_ngn=smart_threshold,
+                settings=settings,
             )
+
+
+async def _reply_official_connect(
+    *,
+    adapter: ChannelAdapter,
+    store: EchoStore,
+    seller_id: str,
+    buyer_id: str,
+    sender_id: str,
+    reply: str,
+) -> None:
+    """Send the fixed official-page connect reply (no LLM / catalog)."""
+    message_id = await adapter.send_text(sender_id, reply)
+    out_id = message_id or f"out-official-{sender_id}"
+    store.save_outbound(
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        channel="instagram",
+        external_msg_id=out_id,
+        text=reply,
+        meta={"mode": "official_connect"},
+    )
 
 
 @router.post("/webhooks/whatsapp")
@@ -358,7 +426,26 @@ async def instagram_webhook(request: Request, background: BackgroundTasks) -> Re
 
     settings = request.app.state.settings
     store = _store(request)
+    # Prefer recipient IG user id from the webhook so seller_id matches Instagram Login.
     account_id = settings.instagram_account_id or settings.fb_page_id
+    for entry in payload.get("entry") or []:
+        for event in entry.get("messaging") or []:
+            rid = str((event.get("recipient") or {}).get("id") or "")
+            if rid:
+                account_id = rid
+                break
+        if account_id and account_id != (settings.instagram_account_id or settings.fb_page_id):
+            break
+    # Prefer the OAuth session that matches this recipient only.
+    # Never fall back to sessions.latest() — that can send as the wrong IG account
+    # (e.g. a connected test shop while DMing the official Sell-Safe page).
+    sessions = getattr(request.app.state, "instagram_sessions", None)
+    if sessions is not None:
+        live = sessions.find_by_account_id(str(account_id or ""))
+        if live is not None and live.access_token:
+            settings.instagram_access_token = live.access_token
+            if live.account_id:
+                settings.instagram_account_id = live.account_id
     for message in adapter.parse(payload):
         seller_id = store.ensure_seller(account_id, channel="instagram")
         buyer_id = store.ensure_buyer("instagram", message.sender_id, message.display_name)

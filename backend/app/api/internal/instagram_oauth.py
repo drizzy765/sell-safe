@@ -31,6 +31,34 @@ class InstagramStatusResponse(BaseModel):
     account_id: str | None = None
     ready: bool = False
     detail: str | None = None
+    graph_username: str | None = None
+
+
+async def _graph_username(access_token: str, transport=None) -> str | None:
+    """Resolve the live Graph username for a session token (no token returned)."""
+    token = (access_token or "").strip()
+    if not token:
+        return None
+    import httpx
+
+    # Always use a real network client for Graph — app.state.transport may be an
+    # ASGI test transport that cannot reach graph.instagram.com.
+    del transport
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                "https://graph.instagram.com/v23.0/me",
+                params={"fields": "user_id,username,account_type", "access_token": token},
+            )
+        if response.status_code >= 400:
+            return None
+        payload = response.json()
+        name = str(payload.get("username") or "").strip()
+        if name.isdigit():
+            return None
+        return name or None
+    except Exception:
+        return None
 
 
 class OAuthStartResponse(BaseModel):
@@ -82,7 +110,7 @@ def _session_id(
 
 
 @router.get("/status", response_model=InstagramStatusResponse)
-def instagram_status(
+async def instagram_status(
     request: Request,
     x_ig_session: str | None = Header(default=None, alias=SESSION_HEADER),
 ) -> InstagramStatusResponse:
@@ -91,12 +119,20 @@ def instagram_status(
     session_id = _session_id(request, x_ig_session)
     session = _sessions(request).get(session_id) if session_id else None
     if session is not None:
+        # Prefer the live OAuth session token for outbound replies so we do not
+        # accidentally send as a different IG account from .env.
+        settings.instagram_access_token = session.access_token
+        transport = getattr(request.app.state, "transport", None)
+        graph_username = await _graph_username(session.access_token, transport=transport)
+        if graph_username and not session.username:
+            session.username = graph_username
         return InstagramStatusResponse(
             connected=True,
             oauth_configured=configured,
-            username=session.username or None,
+            username=session.username or graph_username,
             account_id=session.account_id,
             ready=True,
+            graph_username=graph_username,
         )
     detail = None
     if not configured:
@@ -169,6 +205,9 @@ async def oauth_exchange(
         username=username,
         expires_in=expires_in,
     )
+    settings.instagram_access_token = access_token
+    if account_id:
+        settings.instagram_account_id = account_id
     return OAuthExchangeResponse(
         session_id=session_id,
         username=username,
@@ -223,6 +262,9 @@ async def oauth_callback(
         username=username,
         expires_in=expires_in,
     )
+    settings.instagram_access_token = access_token
+    if account_id:
+        settings.instagram_account_id = account_id
     dest = consumed.return_to if consumed.return_to.startswith("/") else DEFAULT_RETURN_TO
     return _to_web(session_id=session_id, ig_user=username, return_to=dest)
 

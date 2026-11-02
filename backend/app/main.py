@@ -18,6 +18,7 @@ from app.config import Settings, get_settings
 from app.db.catalog_store import CatalogStore, MemoryCatalogStore
 from app.db.echo_store import EchoStore
 from app.db.fraud_store import FraudStore
+from app.db.inbox_control import InboxControlStore
 from app.db.instagram_session_store import InstagramSessionStore
 from app.db.onboarding_catalog_store import MemoryOnboardingCatalogStore, OnboardingCatalogStore
 from app.db.orders import OrderStore
@@ -53,6 +54,7 @@ def create_app(
     shops: ShopStore | None = None,
     onboarding_catalog: OnboardingCatalogStore | None = None,
     shop_media: MemoryShopMediaStore | None = None,
+    inbox_control: InboxControlStore | None = None,
 ) -> FastAPI:
     """Build the app. Tests inject settings, stores, and an HTTP transport."""
     resolved = settings or get_settings()
@@ -73,6 +75,7 @@ def create_app(
     app.state.shops = shops or MemoryShopStore()
     app.state.onboarding_catalog = onboarding_catalog or MemoryOnboardingCatalogStore()
     app.state.shop_media = shop_media or MemoryShopMediaStore()
+    app.state.inbox_control = inbox_control or InboxControlStore()
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

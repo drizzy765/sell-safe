@@ -49,6 +49,12 @@ class ShopProfile:
     delivery_policy: str = ""
     recent_media: list[ShopMedia] = field(default_factory=list)
     confirmed: bool = False
+    # Dashboard v2 reply controls (global default; per-chat can override).
+    reply_mode: str = "auto"  # auto | approve | smart
+    smart_threshold_ngn: int = 50000
+    demo_mode: bool = False
+    catalog_skipped: bool = False
+    seller_email: str = ""
 
     def public_dict(self) -> dict:
         data = asdict(self)

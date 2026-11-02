@@ -13,6 +13,7 @@
   - No real customer data/receipts in repo; use `evals/data/synthetic/`.
   - Hosted APIs only; do not add local model weights or heavy deps (torch, etc.).
   - Messages to users that state money/verdicts use templates in `app/agent/templates.py`.
+  - **Official vs connected Instagram:** DMs to the official Sell-Safe page (`SELLSAFE_OFFICIAL_IG_ACCOUNT_IDS`, e.g. sellsafe.ng) get a fixed connect/marketing reply (site link + how to connect a shop) — never catalog prices, product photos, or payment flows. Catalog/business automation runs only on seller accounts connected via Instagram Login OAuth (e.g. sellsafe.testshop.ng). Do not send as one IG account using another account's token (`sessions.latest()` is forbidden for outbound).
 - **Commands:** `ruff check . && ruff format .` · `pytest -q -m "not live"` · `python -m evals.run`.
 - **Commits:** Conventional Commits, small PRs (see `docs/github_rules.md`).
 - **Before finishing a task:** tests pass, lint passes, docs updated.

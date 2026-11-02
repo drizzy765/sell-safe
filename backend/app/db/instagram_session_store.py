@@ -81,6 +81,36 @@ class InstagramSessionStore:
                 return None
             return session
 
+    def find_by_account_id(self, account_id: str) -> InstagramSession | None:
+        """Return any live session for this Instagram account id (webhook outbound)."""
+        wanted = (account_id or "").strip()
+        if not wanted:
+            return None
+        with self._lock:
+            self._purge_locked()
+            now = datetime.now(UTC)
+            for session in self._sessions.values():
+                if session.account_id != wanted:
+                    continue
+                if session.expires_at is not None and session.expires_at <= now:
+                    continue
+                return session
+            return None
+
+    def latest(self) -> InstagramSession | None:
+        """Most recently created live session (single-shop hackathon helper)."""
+        with self._lock:
+            self._purge_locked()
+            now = datetime.now(UTC)
+            live = [
+                s
+                for s in self._sessions.values()
+                if s.expires_at is None or s.expires_at > now
+            ]
+            if not live:
+                return None
+            return max(live, key=lambda s: s.created_at)
+
     def delete(self, session_id: str) -> bool:
         with self._lock:
             return self._sessions.pop(session_id, None) is not None

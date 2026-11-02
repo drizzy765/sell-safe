@@ -1,6 +1,22 @@
 """Fixed messages for amounts. The model does not write these sentences."""
 
 
+def official_connect_reply(site_url: str) -> str:
+    """DM reply on the official Sell-Safe Instagram page (not a seller shop)."""
+    base = (site_url or "https://sellsafe.ng").rstrip("/")
+    return (
+        "Hi — this is Sell-Safe's official page.\n\n"
+        "We help Instagram shops auto-reply to buyers, share catalog prices with photos, "
+        "and catch fake payment proofs before you release goods.\n\n"
+        "This page does not sell products. To put Sell-Safe on YOUR business Instagram:\n"
+        f"1. Open {base}\n"
+        "2. Connect your Instagram business account\n"
+        "3. Import your catalog (upload or Drive)\n"
+        "4. We automate replies on your shop page — buyers message you, not this official account.\n\n"
+        f"Start here: {base}"
+    )
+
+
 def format_naira(price_kobo: int) -> str:
     naira = price_kobo // 100
     return f"₦{naira:,}"
