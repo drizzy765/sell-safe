@@ -24,16 +24,19 @@ DEFAULT_RETURN_TO = "/?platform=instagram"
 
 
 def _fresh_oauth_settings(request: Request):
-    """Re-read OAuth URLs from .env so stale tunnel hosts are not reused."""
+    """Re-read public OAuth URLs from .env so stale tunnel hosts are not reused.
+
+    Do not overwrite app id/secret from a blank env read — that blanks
+    credentials injected by unit tests (and returns 503 for oauth/start).
+    """
     current = request.app.state.settings
     fresh = get_settings()
-    current.instagram_oauth_redirect_uri = fresh.instagram_oauth_redirect_uri
-    current.instagram_app_id = fresh.instagram_app_id
-    current.instagram_app_secret = fresh.instagram_app_secret
-    current.instagram_oauth_scopes = fresh.instagram_oauth_scopes
-    current.app_base_url = fresh.app_base_url
-    current.web_base_url = fresh.web_base_url
-    current.instagram_username = fresh.instagram_username
+    if (fresh.instagram_oauth_redirect_uri or "").strip():
+        current.instagram_oauth_redirect_uri = fresh.instagram_oauth_redirect_uri
+    if (fresh.app_base_url or "").strip():
+        current.app_base_url = fresh.app_base_url
+    if (fresh.web_base_url or "").strip():
+        current.web_base_url = fresh.web_base_url
     return current
 
 
