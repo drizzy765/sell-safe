@@ -121,7 +121,7 @@ async def test_voice_note_stt_failure_asks_to_type() -> None:
         speech=FakeSpeechClient(fail=True),
         store=store,
         jev=FakeJev(),
-        provider=FakeProvider(chat_text="should not run"),
+        provider=_FailingProvider(chat_text="should not run"),
         catalog_store=MemoryCatalogStore(),
         order_store=MemoryOrderStore(),
         seller_id=seller_id,
@@ -148,7 +148,7 @@ async def test_voice_note_empty_transcript_asks_to_type() -> None:
         speech=FakeSpeechClient(text="   "),
         store=store,
         jev=FakeJev(),
-        provider=FakeProvider(chat_text="should not run"),
+        provider=_FailingProvider(chat_text="should not run"),
         catalog_store=MemoryCatalogStore(),
         order_store=MemoryOrderStore(),
         seller_id=seller_id,
@@ -157,3 +157,67 @@ async def test_voice_note_empty_transcript_asks_to_type() -> None:
     )
 
     adapter.send_text.assert_awaited_once_with("buyer-1", fallback_ask_type("pcm"))
+
+
+class _FailingProvider(FakeProvider):
+    async def transcribe(self, audio: bytes) -> str:
+        raise RuntimeError("fallback stt failed")
+
+
+@pytest.mark.asyncio
+async def test_voice_note_falls_back_to_provider_transcribe_when_intron_fails() -> None:
+    """Intron outage must not silence voice notes: the LLM provider's
+    transcription (Meta delegates to Groq Whisper) is the backup."""
+    store = MemoryEchoStore()
+    seller_id = store.ensure_seller("wa-1")
+    buyer_id = store.ensure_buyer("instagram", "buyer-1")
+    store.seller_languages[seller_id] = "en"
+
+    adapter = AsyncMock()
+    adapter.fetch_media = AsyncMock(return_value=b"ogg-bytes")
+    adapter.send_text = AsyncMock(return_value="out-1")
+
+    await handle_voice_note(
+        adapter=adapter,
+        speech=FakeSpeechClient(fail=True),
+        store=store,
+        jev=FakeJev(intent="chit_chat", language="en"),
+        provider=FakeProvider(chat_text="Hello! How can I help you today?"),
+        catalog_store=MemoryCatalogStore(),
+        order_store=MemoryOrderStore(),
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        message=_audio_message(channel="instagram"),
+    )
+
+    sent = [call.args[1] for call in adapter.send_text.await_args_list if len(call.args) > 1]
+    assert fallback_ask_type("en") not in sent
+    saved = store.messages["msg-audio-1"]
+    assert saved["media_path"] == "https://cdn.example/voice.ogg"
+
+
+@pytest.mark.asyncio
+async def test_voice_note_both_transcribers_fail_asks_to_type() -> None:
+    store = MemoryEchoStore()
+    seller_id = store.ensure_seller("wa-1")
+    buyer_id = store.ensure_buyer("whatsapp", "buyer-1")
+    store.seller_languages[seller_id] = "en"
+
+    adapter = AsyncMock()
+    adapter.fetch_media = AsyncMock(return_value=b"ogg-bytes")
+    adapter.send_text = AsyncMock(return_value="out-1")
+
+    await handle_voice_note(
+        adapter=adapter,
+        speech=FakeSpeechClient(fail=True),
+        store=store,
+        jev=FakeJev(),
+        provider=_FailingProvider(chat_text="unused"),
+        catalog_store=MemoryCatalogStore(),
+        order_store=MemoryOrderStore(),
+        seller_id=seller_id,
+        buyer_id=buyer_id,
+        message=_audio_message(),
+    )
+
+    adapter.send_text.assert_awaited_once_with("buyer-1", fallback_ask_type("en"))

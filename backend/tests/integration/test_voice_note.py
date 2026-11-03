@@ -75,6 +75,11 @@ def test_voice_note_is_transcribed_and_replied() -> None:
     assert saved["asr_confidence"] == 0.91
 
 
+class _FailingProvider(FakeProvider):
+    async def transcribe(self, audio: bytes) -> str:
+        raise RuntimeError("fallback stt failed")
+
+
 def test_voice_note_stt_failure_asks_buyer_to_type() -> None:
     store = MemoryEchoStore()
     sent: list[bytes] = []
@@ -95,7 +100,7 @@ def test_voice_note_stt_failure_asks_buyer_to_type() -> None:
         _settings(),
         store=store,
         transport=httpx.MockTransport(handler),
-        provider=FakeProvider(chat_text="should-not-send"),
+        provider=_FailingProvider(chat_text="should-not-send"),
         jev=FakeJev(intent="chit_chat", language="en"),
         catalog=MemoryCatalogStore(),
         orders=MemoryOrderStore(),

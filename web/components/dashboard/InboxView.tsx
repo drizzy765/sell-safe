@@ -1,5 +1,7 @@
 "use client";
 
+import { Mic } from "lucide-react";
+
 import { useCallback, useEffect, useState } from "react";
 
 import {
@@ -439,7 +441,27 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
           </div>
         ) : null}
 
-        {message.text ? (
+        {message.type === "audio" || message.type === "voice" ? (
+          <div
+            className={`w-64 max-w-full rounded-2xl px-3.5 py-2.5 ${
+              incoming ? "rounded-bl-md bg-[#efefef] text-[#262626]" : "rounded-br-md bg-[#efefef] text-[#262626]"
+            }`}
+          >
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#6b6b80]">
+              <Mic size={12} aria-hidden /> Voice note
+            </p>
+            {message.media_url ? (
+              <audio controls preload="none" src={message.media_url} className="mt-1.5 w-full" aria-label="Play voice note" />
+            ) : (
+              <p className="mt-1 text-xs text-[#8e8e8e]">Audio unavailable in dashboard — listen in Instagram.</p>
+            )}
+            {message.text ? (
+              <p className="mt-1.5 text-xs italic leading-snug text-[#52525b]">“{message.text}”</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {message.text && message.type !== "audio" && message.type !== "voice" ? (
           <div
             className={`rounded-2xl px-3.5 py-2 text-sm leading-snug ${
               incoming
