@@ -141,6 +141,23 @@ class InstagramSessionStore:
                 return session
             return None
 
+    def find_session_id_by_account_id(self, account_id: str) -> str | None:
+        """Session id for a live session on this account (login restore)."""
+        wanted = (account_id or "").strip()
+        if not wanted:
+            return None
+        with self._lock:
+            self._purge_locked()
+            now = datetime.now(UTC)
+            for sid, session in self._sessions.items():
+                ids = {session.account_id, *session.alias_ids}
+                if wanted not in ids:
+                    continue
+                if session.expires_at is not None and session.expires_at <= now:
+                    continue
+                return sid
+            return None
+
     def upsert_aliases(self, session_id: str, *alias_ids: str) -> InstagramSession | None:
         """Attach extra IG ids (e.g. /me id) so webhook recipient lookup works."""
         with self._lock:

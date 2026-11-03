@@ -13,6 +13,9 @@ import {
   Summary,
 } from "@/components/dashboard/types";
 import { SellSafeLogo } from "@/components/SellSafeLogo";
+import { StatusStrip } from "@/components/dashboard/StatusStrip";
+import { Inbox, LayoutGrid, LogIn, LogOut, Megaphone, Settings, ShoppingBag } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -36,6 +39,27 @@ function DashboardInner() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [auth, setAuth] = useState<{ authenticated: boolean; email?: string; linked?: boolean }>({
+    authenticated: false,
+  });
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    void fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setAuth)
+      .catch(() => undefined);
+  }, []);
+
+  async function linkAccount() {
+    const response = await fetch("/api/auth/link", { method: "POST" });
+    if (response.ok) setAuth((a) => ({ ...a, linked: true }));
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    setAuth({ authenticated: false });
+  }
 
   const load = useCallback(async () => {
     const response = await fetch("/api/dashboard/summary", { cache: "no-store" });
@@ -224,8 +248,14 @@ function DashboardInner() {
 
   if (!data && !error) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Loading dashboard…
+      <main className="mx-auto min-h-screen max-w-5xl px-4 py-10" aria-busy="true" aria-label="Loading dashboard">
+        <div className="h-8 w-44 animate-pulse rounded-lg bg-[#ececf4]" />
+        <div className="mt-6 h-36 animate-pulse rounded-3xl bg-[#f1f1f8]" />
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-[#f1f1f8]" />
+          ))}
+        </div>
       </main>
     );
   }
@@ -252,17 +282,17 @@ function DashboardInner() {
   const unread = data!.stats.unread_inbox || 0;
   const shopHandle = data!.shop?.handle || data!.session_username || "shop";
 
-  const nav: { id: NavTab; label: string; badge?: number }[] = [
-    { id: "inbox", label: "Inbox", badge: unread || undefined },
-    { id: "catalog", label: "Catalog" },
-    { id: "orders", label: "Orders" },
-    { id: "outreach", label: "Outreach" },
-    { id: "settings", label: "Settings" },
+  const nav: { id: NavTab; label: string; badge?: number; Icon: typeof Inbox }[] = [
+    { id: "inbox", label: "Inbox", badge: unread || undefined, Icon: Inbox },
+    { id: "catalog", label: "Catalog", Icon: LayoutGrid },
+    { id: "orders", label: "Orders", Icon: ShoppingBag },
+    { id: "outreach", label: "Outreach", Icon: Megaphone },
+    { id: "settings", label: "Settings", Icon: Settings },
   ];
 
   return (
     <div className="flex min-h-screen bg-[#fafafa] text-[#262626]">
-      <aside className="flex w-[220px] shrink-0 flex-col border-r border-[#efefef] bg-[#111827] text-white">
+      <aside className="hidden w-[228px] shrink-0 flex-col border-r border-[#efefef] bg-[#0b1226] text-white lg:flex">
         <div className="border-b border-white/10 px-4 py-4">
           <Link href="/" className="inline-block brightness-0 invert">
             <SellSafeLogo height={24} />
@@ -277,13 +307,16 @@ function DashboardInner() {
               key={item.id}
               type="button"
               onClick={() => switchTab(item.id)}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm ${
+              className={`flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-[background-color,color,transform] active:scale-[0.96] ${
                 tab === item.id
-                  ? "bg-[#2876fe] font-semibold text-white"
+                  ? "bg-gradient-brand font-semibold text-white"
                   : "text-white/75 hover:bg-white/5 hover:text-white"
               }`}
             >
-              <span>{item.label}</span>
+              <span className="inline-flex items-center gap-2.5">
+                <item.Icon size={17} strokeWidth={tab === item.id ? 2 : 1.5} aria-hidden />
+                {item.label}
+              </span>
               {item.badge ? (
                 <span className="rounded-full bg-[#dd2a7b] px-1.5 py-0.5 text-[10px] font-bold">
                   {item.badge}
@@ -292,10 +325,32 @@ function DashboardInner() {
             </button>
           ))}
         </nav>
+        <div className="border-t border-white/10 px-4 py-3 text-xs">
+          {auth.authenticated ? (
+            <>
+              <p className="truncate text-white/85">{auth.email}</p>
+              <p className="mt-0.5 text-white/50">{auth.linked ? "Shop saved to your account" : "Shop not saved yet"}</p>
+              <div className="mt-2 flex gap-3">
+                {!auth.linked ? (
+                  <button type="button" onClick={() => void linkAccount()} className="font-semibold text-[#7db3ff] underline">
+                    Save my shop
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => void logout()} className="inline-flex items-center gap-1 text-white/60 underline">
+                  <LogOut size={12} aria-hidden /> Logout
+                </button>
+              </div>
+            </>
+          ) : (
+            <Link href="/login" className="inline-flex min-h-[40px] items-center gap-2 font-semibold text-[#7db3ff]">
+              <LogIn size={14} aria-hidden /> Login to save your shop
+            </Link>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => switchTab("settings")}
-          className="border-t border-white/10 px-4 py-3 text-left hover:bg-white/5"
+          className="border-t border-white/10 px-4 py-3 text-left transition-colors hover:bg-white/5"
           title="Edit shop & payout info"
         >
           <p className="truncate text-xs font-medium">{shopHandle}</p>
@@ -304,7 +359,12 @@ function DashboardInner() {
         </button>
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 pb-20 lg:pb-0">
+        <header className="flex items-center justify-between border-b border-[#efefef] bg-white px-4 py-3 lg:hidden">
+          <SellSafeLogo height={22} />
+          <span className="max-w-[45%] truncate text-xs font-medium text-[#52525b]">@{shopHandle}</span>
+        </header>
+        <StatusStrip data={data!} shopHandle={shopHandle} onOpenSettings={() => switchTab("settings")} />
         {message && tab === "settings" ? (
           <p className="mx-6 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
             {message}
@@ -315,6 +375,12 @@ function DashboardInner() {
             {error}
           </p>
         ) : null}
+        <motion.div
+          key={tab}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+        >
         {tab === "inbox" ? (
           <InboxView
             handle={shopHandle}
@@ -367,6 +433,28 @@ function DashboardInner() {
             body="Seller-picked one-at-a-time pitches (no cold mass DMs). Open after inbox + catalog are solid — paste a handle → draft → open ig.me/m/…"
           />
         ) : null}
+        </motion.div>
+        <nav aria-label="Dashboard" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#e8e8f0] bg-white/95 backdrop-blur lg:hidden">
+          {nav.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => switchTab(item.id)}
+              aria-current={tab === item.id ? "page" : undefined}
+              className={`flex min-h-[56px] flex-col items-center justify-center gap-1 text-[10px] transition-[color,transform] active:scale-[0.96] ${
+                tab === item.id ? "font-semibold text-[#2876fe]" : "text-[#6b6b80]"
+              }`}
+            >
+              <span className="relative">
+                <item.Icon size={20} strokeWidth={tab === item.id ? 2 : 1.5} aria-hidden />
+                {item.badge ? (
+                  <span className="absolute -right-2 -top-1 rounded-full bg-[#dd2a7b] px-1 text-[9px] font-bold text-white">{item.badge}</span>
+                ) : null}
+              </span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </main>
     </div>
   );

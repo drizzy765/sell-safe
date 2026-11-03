@@ -36,6 +36,9 @@ Use these for live Instagram Login + DM proof. App is **Sell-Safe** (Development
 
 Old `trycloudflare` API URLs are dead. Do not reuse them in Meta settings.
 
+### Seller login (saves the shop)
+Dashboard sidebar -> **Login to save your shop** (`/login`) -> email magic link -> back in the dashboard, **Save my shop**. After that, logging in on any browser restores the Instagram connection from Supabase (no reconnect) unless the 60-day token expired. Operator setup: see CHANGELOG 2026-11-03 (dashboard premium + seller login).
+
 ## Playwright / browser smoke (agent)
 
 - Landing `/` and `/?platform=instagram`

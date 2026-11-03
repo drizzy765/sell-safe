@@ -41,6 +41,7 @@ The LLM phrases replies. Only the deterministic verification engine sets verdict
 | **P0** | Paystack webhook: real bank evidence → CONFIRMED | In progress |
 | **P1** | WhatsApp waitlist: collect phone numbers, notify on unblock | Planned (Nov 1) |
 | **P2** | Simplified Instagram: one-click connect, hide technical steps | On the Instagram tab |
+| **P2** | Seller login: Supabase magic link; shop + Instagram restored after restart | `/login`, dashboard account block |
 | **P3** | Sample reply demo: show AI reply before seller does any work | Shown after connect |
 | **P4** | Payment safety demo: fake vs real screenshot comparison | Shown after connect |
 | **P5** | Photo → catalog item | ✅ Complete |

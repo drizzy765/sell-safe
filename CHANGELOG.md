@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-03 (dashboard premium + seller login)
+### Added
+- **Seller login (Supabase Auth magic link).** `/login` emails a sign-in link; the dashboard sidebar can save the connected shop to the account. On later logins the saved Instagram session (Supabase `instagram_sessions`, migration 0007) is restored automatically — no Instagram reconnect unless the token truly expired. Backend link/restore is internal-token gated (`/api/auth/link`, `/api/auth/restore`; migration 0008 `seller_accounts`).
+- **Dashboard premium pass.** Status strip (connection, reply mode, payout state, chats/orders/verified/fakes stats), payout-missing warning, skeleton loading, animated tab transitions (reduced-motion aware), mobile bottom nav + sticky header, sidebar account block.
+- **Deterministic payment-details replies.** Account-number / how-to-pay asks bypass the LLM and answer from saved payout details (or a clear not-configured message). See PR #24/#25 notes.
+
+### Operator setup for login
+1. Supabase SQL editor: run `backend/app/db/migrations/0007_instagram_sessions.sql` and `0008_seller_accounts.sql`.
+2. Supabase Auth -> URL configuration: allow redirect `<WEB_ORIGIN>/auth/callback` (localhost + Vercel domain).
+3. Web host env: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `INTERNAL_API_TOKEN` (same value as backend). Backend already needs its Supabase service keys.
+
+
 ## 2026-11-02
 
 ### Dashboard — edit shop & payout after onboarding

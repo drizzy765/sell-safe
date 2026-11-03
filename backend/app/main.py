@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from app.api.internal.auth_accounts import router as auth_accounts_router
 from app.api.internal.catalog_onboarding import router as catalog_onboarding_router
 from app.api.internal.crypto import router as crypto_router
 from app.api.internal.dashboard import router as dashboard_router
@@ -51,6 +52,7 @@ def create_app(
     fraud: FraudStore | None = None,
     waitlist: WaitlistStore | None = None,
     instagram_sessions: InstagramSessionStore | None = None,
+    seller_accounts: object | None = None,
     shops: ShopStore | None = None,
     onboarding_catalog: OnboardingCatalogStore | None = None,
     shop_media: MemoryShopMediaStore | None = None,
@@ -91,6 +93,7 @@ def create_app(
         app.state.instagram_sessions = InstagramSessionStore(
             persist_path=DEFAULT_PERSIST_PATH, supabase_client=supabase_client
         )
+    app.state.seller_accounts = seller_accounts
     app.state.shops = shops or MemoryShopStore()
     app.state.onboarding_catalog = onboarding_catalog or MemoryOnboardingCatalogStore()
     app.state.shop_media = shop_media or MemoryShopMediaStore()
@@ -114,6 +117,7 @@ def create_app(
     app.include_router(onboarding_router)
     app.include_router(catalog_onboarding_router)
     app.include_router(dashboard_router)
+    app.include_router(auth_accounts_router)
     return app
 
 
