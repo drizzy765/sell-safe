@@ -20,9 +20,10 @@
 ## 2026-11-03 (build day)
 - [x] PR #20 merged (inbox sync, payout details, dashboard Settings).
 - [x] Local “deploy” via Cloudflare quick tunnels + logged test accounts in `docs/demo_test_accounts.md`.
+- [x] Backend deployed to Render: `https://sell-safe-api.onrender.com` (`/health` 200, webhook verify 200, OAuth redirect on Render host). Meta OAuth/webhook repointed from dead tunnels to Render.
 - [ ] Playwright/Puppeteer smoke of Sell-Safe website (landing → Connect → dashboard Settings).
-- [ ] Live DM retest: `testicles22` → `sellsafe.testshop.ng` (after Meta redirect/webhook point at current API tunnel).
-- [ ] Stable host deploy (Render/Railway API + Vercel web) when ready — replace disposable tunnels.
+- [ ] Live DM retest: `testicles22` → `sellsafe.testshop.ng` (after Meta redirect/webhook point at Render).
+- [ ] Web deploy (Vercel) — web still runs locally behind a tunnel.
 - [ ] Optimize final changes; run **benchmark** per `docs/benchmark.md`; optional dashboard/UI extras.
 - [ ] Tag `v0.1-demo` when freeze-ready (`docs/github_rules.md`).
 

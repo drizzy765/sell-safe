@@ -185,10 +185,10 @@ Drive folder: **Anyone with the link** · filenames `Honey beans - NGN 6000.jpg`
 
 ### A — Stability (do first)
 
-- [ ] Deploy API + web to stable HTTPS  
+- [x] Deploy API to stable HTTPS (Render: `https://sell-safe-api.onrender.com`). Web (Vercel) still open — web runs locally behind a tunnel.  
 - [ ] Persist Instagram sessions in Supabase  
 - [ ] Persist shops / catalog / messages (or at least sessions + messages)  
-- [ ] Point Meta OAuth + webhook at stable host; remove dead trycloudflare URIs  
+- [x] Point Meta OAuth + webhook at stable host (Render); dead trycloudflare URIs removed from Meta settings (2026-11-03)  
 
 ### B — Live inbox proof
 
