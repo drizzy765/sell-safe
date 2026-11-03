@@ -1,0 +1,15 @@
+name: keepalive
+
+# Render free tier sleeps after ~15 min idle, which delays the first
+# Instagram webhook and can drop demo DMs. Ping /health every 10 minutes
+# to keep the API awake. Disable after the demo to save free instance hours.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 90 https://sell-safe-api.onrender.com/health
