@@ -1,5 +1,7 @@
 """FastAPI application. Webhook routes and /health."""
 
+import hashlib
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -38,6 +40,7 @@ class HealthResponse(BaseModel):
     provider: str
     text_model: str = ""
     llm_key: str = "missing"
+    llm_key_fingerprint: str = ""
 
 
 def create_app(
@@ -105,15 +108,17 @@ def create_app(
     def health() -> HealthResponse:
         if resolved.llm_provider == "meta":
             model = resolved.meta_text_model
-            key_set = bool(resolved.meta_api_key)
+            raw_key = resolved.meta_api_key
         else:
             model = resolved.groq_text_model
-            key_set = bool(resolved.groq_api_key)
+            raw_key = resolved.groq_api_key
+        fingerprint = hashlib.sha256(raw_key.encode()).hexdigest()[:8] if raw_key else ""
         return HealthResponse(
             status="ok",
             provider=resolved.llm_provider,
             text_model=model,
-            llm_key="set" if key_set else "missing",
+            llm_key="set" if raw_key else "missing",
+            llm_key_fingerprint=fingerprint,
         )
 
     @app.get("/privacy", response_class=HTMLResponse)
