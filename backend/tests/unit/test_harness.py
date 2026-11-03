@@ -91,3 +91,41 @@ class _FakeAdapter:
 
     def parse(self, payload: dict) -> list:
         return []
+
+
+class _RaisingProvider:
+    """Simulates an LLM provider HTTP failure (e.g. Groq 400 on Render)."""
+
+    async def chat(self, messages, tools=None, json_schema=None):
+        raise RuntimeError("Groq request failed (400): simulated")
+
+    async def vision(self, image, prompt, json_schema):
+        raise RuntimeError("Groq request failed (400): simulated")
+
+    async def transcribe(self, audio):
+        raise RuntimeError("Groq request failed (400): simulated")
+
+
+@pytest.mark.asyncio
+async def test_provider_failure_still_replies_with_fallback() -> None:
+    """Regression: a provider 400 must not leave the buyer with silence."""
+    catalog = MemoryCatalogStore()
+    store = MemoryEchoStore()
+    store.seller_languages["s1"] = "en"
+    jev = FakeJev(intent="chit_chat", language="en")
+
+    state = await run_turn(
+        _message("Hi"),
+        seller_id="s1",
+        buyer_id="b1",
+        channel_adapter=_FakeAdapter(),
+        store=store,
+        jev=jev,
+        provider=_RaisingProvider(),
+        catalog_store=catalog,
+        order_store=MemoryOrderStore(),
+        payment_store=MemoryPaymentStore(),
+    )
+
+    assert state.reply  # fallback text, not an exception / empty reply
+    assert state.errors  # failure is recorded for logs
