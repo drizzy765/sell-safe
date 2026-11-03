@@ -1,6 +1,7 @@
 """Harness nodes: observe, route, sales_agent, respond."""
 
 import json
+import logging
 from pathlib import Path
 
 from app.agent.graph.state import State, Turn
@@ -11,6 +12,8 @@ from app.channels.base import ChannelAdapter
 from app.db.echo_store import EchoStore
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 _MAX_STEPS = 6
 _MAX_TOOL_CALLS = 3
@@ -112,7 +115,13 @@ async def sales_agent(
 
     while state.steps < _MAX_STEPS and tool_call_count < _MAX_TOOL_CALLS:
         state.bump()
-        result = await provider.chat(messages, tools=tools)
+        try:
+            result = await provider.chat(messages, tools=tools)
+        except Exception as exc:  # Provider outage/400 must not silence the buyer.
+            logger.exception("sales_agent provider call failed")
+            state.errors.append(str(exc))
+            state.reply = fallback_reply(state.language)
+            return state
 
         if result.tool_calls:
             tool_messages = []

@@ -64,5 +64,10 @@ class GroqProvider:
         url = f"{_BASE_URL}{path}"
         async with httpx.AsyncClient(transport=self._transport) as client:
             response = await client.post(url, json=payload, headers=self._headers())
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(
+                    f"Groq request failed ({exc.response.status_code}): {exc.response.text[:500]}"
+                ) from exc
         return response.json()
