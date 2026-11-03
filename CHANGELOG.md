@@ -17,12 +17,14 @@
 - Session store matches webhook recipient by professional `user_id` **or** IG-scoped `/me` id aliases.
 - Graph Conversations sync marks inbound rows `source=graph_sync` so a later webhook with the same message id still runs the agent (fixes race where dashboard sync swallowed auto-replies).
 
-## 2026-11-03 (planned — tomorrow build)
-- Deploy + harden tunnels/env for a stable public demo host (not disposable trycloudflare when possible).
-- Optimize final changes: webhook/agent latency, inbox sync, OAuth reconnect, payout-details path.
-- Run **benchmark** per `docs/benchmark.md` and record results.
-- Optional: more useful dashboard features (orders surface, clearer payout status, inbox polish) and frontend UI pass.
-- Tag freeze checkpoint if ready (`v0.1-demo` per `docs/github_rules.md`).
+## 2026-11-03 (build day)
+- [x] PR #20 merged (inbox sync, payout details, dashboard Settings).
+- [x] Local “deploy” via Cloudflare quick tunnels + logged test accounts in `docs/demo_test_accounts.md`.
+- [ ] Playwright/Puppeteer smoke of Sell-Safe website (landing → Connect → dashboard Settings).
+- [ ] Live DM retest: `testicles22` → `sellsafe.testshop.ng` (after Meta redirect/webhook point at current API tunnel).
+- [ ] Stable host deploy (Render/Railway API + Vercel web) when ready — replace disposable tunnels.
+- [ ] Optimize final changes; run **benchmark** per `docs/benchmark.md`; optional dashboard/UI extras.
+- [ ] Tag `v0.1-demo` when freeze-ready (`docs/github_rules.md`).
 
 ## 2026-10-26
 
