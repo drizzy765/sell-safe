@@ -47,14 +47,18 @@ class InstagramSessionStore:
         *,
         state_ttl_seconds: int = 600,
         persist_path: Path | None = None,
+        supabase_client: object | None = None,
     ) -> None:
         self._lock = Lock()
         self._states: dict[str, OAuthState] = {}
         self._sessions: dict[str, InstagramSession] = {}
         self._state_ttl = timedelta(seconds=state_ttl_seconds)
         self._persist_path = persist_path
+        self._supabase = supabase_client
         if self._persist_path is not None:
             self._load_from_disk()
+        if self._supabase is not None:
+            self._load_from_supabase()
 
     def create_state(self, *, return_to: str) -> str:
         state = token_urlsafe(24)
@@ -99,6 +103,8 @@ class InstagramSessionStore:
                 alias_ids=aliases,
             )
             self._save_locked()
+            _created = self._sessions[session_id]
+        self._remote_upsert(session_id, _created)
         if self._persist_path is not None:
             try:
                 Path(".tmp/ig_session_id.txt").write_text(session_id, encoding="utf-8")
@@ -149,6 +155,7 @@ class InstagramSessionStore:
                 merged.append(alias)
             session.alias_ids = tuple(merged)
             self._save_locked()
+            self._remote_upsert(session_id, session)
             return session
 
     def latest(self) -> InstagramSession | None:
@@ -168,7 +175,79 @@ class InstagramSessionStore:
             removed = self._sessions.pop(session_id, None) is not None
             if removed:
                 self._save_locked()
+                self._remote_delete(session_id)
             return removed
+
+    def _remote_upsert(self, session_id: str, session: InstagramSession) -> None:
+        if self._supabase is None:
+            return
+        try:
+            self._supabase.table("instagram_sessions").upsert(
+                {
+                    "session_id": session_id,
+                    "access_token": session.access_token,
+                    "account_id": session.account_id,
+                    "username": session.username,
+                    "alias_ids": list(session.alias_ids),
+                    "created_at": session.created_at.isoformat(),
+                    "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+                }
+            ).execute()
+        except Exception:
+            pass  # Table may not exist yet (migration 0007); memory store still works.
+
+    def _remote_delete(self, session_id: str) -> None:
+        if self._supabase is None:
+            return
+        try:
+            self._supabase.table("instagram_sessions").delete().eq(
+                "session_id", session_id
+            ).execute()
+        except Exception:
+            pass
+
+    def _load_from_supabase(self) -> None:
+        try:
+            result = self._supabase.table("instagram_sessions").select("*").execute()
+        except Exception:
+            return
+        rows = getattr(result, "data", None) or []
+        now = datetime.now(UTC)
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            session_id = str(row.get("session_id") or "").strip()
+            token = str(row.get("access_token") or "").strip()
+            account_id = str(row.get("account_id") or "").strip()
+            if not session_id or not token or not account_id:
+                continue
+            expires_at = None
+            raw_exp = row.get("expires_at")
+            if raw_exp:
+                try:
+                    expires_at = datetime.fromisoformat(str(raw_exp))
+                except ValueError:
+                    expires_at = None
+            if expires_at is not None and expires_at <= now:
+                continue
+            try:
+                created_at = datetime.fromisoformat(str(row.get("created_at") or now.isoformat()))
+            except ValueError:
+                created_at = now
+            raw_aliases = row.get("alias_ids") or []
+            aliases = (
+                [str(a).strip() for a in raw_aliases if str(a).strip()]
+                if isinstance(raw_aliases, list)
+                else []
+            )
+            self._sessions[session_id] = InstagramSession(
+                access_token=token,
+                account_id=account_id,
+                username=str(row.get("username") or ""),
+                created_at=created_at if created_at.tzinfo else created_at.replace(tzinfo=UTC),
+                expires_at=expires_at,
+                alias_ids=tuple(dict.fromkeys(aliases)),
+            )
 
     def _purge_locked(self) -> None:
         now = datetime.now(UTC)

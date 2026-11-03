@@ -21,19 +21,20 @@ Use these for live Instagram Login + DM proof. App is **Sell-Safe** (Development
    - Confirm shop account is **subscribed** to message webhooks (`me/subscribed_apps`).
 4. Buyer DMs shop → expect auto-reply; “account number” → payout details from Settings.
 
-## Local stack (tunnel demo “deploy”) — 2026-11-03 session
+## Deployed stack — 2026-11-03 (Render API live)
 
-| Process | Port | Public (this session) |
-|---------|------|--------|
-| FastAPI | `127.0.0.1:8002` | `https://spam-thorough-chosen-puts.trycloudflare.com` |
-| Next.js `web/` | `127.0.0.1:3000` | `https://telephony-carrier-occupations-matters.trycloudflare.com` |
-| Next → API | `web/.env.local` | `API_BASE_URL=http://127.0.0.1:8002` |
+| Process | Public URL |
+|---------|------------|
+| FastAPI (Render) | `https://sell-safe-api.onrender.com` |
+| Next.js `web/` | Local dev + tunnel (Vercel deploy still open). Current tunnel host is in local `web/.env.local` / root `.env` `WEB_BASE_URL` — tunnels rotate, do not hardcode. |
+| Next → API | `web/.env.local`: `API_BASE_URL=https://sell-safe-api.onrender.com` |
 
-**Connect:** `https://telephony-carrier-occupations-matters.trycloudflare.com/?platform=instagram`  
-**Meta redirect:** `https://spam-thorough-chosen-puts.trycloudflare.com/api/instagram/oauth/callback`  
-**Meta webhook:** `https://spam-thorough-chosen-puts.trycloudflare.com/webhooks/instagram`
+**Meta redirect:** `https://sell-safe-api.onrender.com/api/instagram/oauth/callback`  
+**Meta deauthorize:** `https://sell-safe-api.onrender.com/api/instagram/oauth/callback`  
+**Meta data deletion:** `https://sell-safe-api.onrender.com/privacy`  
+**Meta webhook:** `https://sell-safe-api.onrender.com/webhooks/instagram`
 
-Stable host deploy (Render/Railway API + Vercel web) is still open — see `docs/architecture.md` and CHANGELOG 2026-11-03.
+Old `trycloudflare` API URLs are dead. Do not reuse them in Meta settings.
 
 ## Playwright / browser smoke (agent)
 

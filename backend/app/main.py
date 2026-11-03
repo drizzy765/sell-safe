@@ -72,9 +72,25 @@ def create_app(
     app.state.speech = speech
     app.state.fraud = fraud
     app.state.waitlist = waitlist
-    app.state.instagram_sessions = instagram_sessions or InstagramSessionStore(
-        persist_path=DEFAULT_PERSIST_PATH
-    )
+    if instagram_sessions is not None:
+        app.state.instagram_sessions = instagram_sessions
+    else:
+        supabase_client = None
+        if getattr(resolved, "supabase_url", "") and getattr(
+            resolved, "supabase_service_role_key", ""
+        ):
+            try:
+                from supabase import create_client
+
+                supabase_client = create_client(
+                    getattr(resolved, "supabase_url", ""),
+                    getattr(resolved, "supabase_service_role_key", ""),
+                )
+            except Exception:
+                supabase_client = None
+        app.state.instagram_sessions = InstagramSessionStore(
+            persist_path=DEFAULT_PERSIST_PATH, supabase_client=supabase_client
+        )
     app.state.shops = shops or MemoryShopStore()
     app.state.onboarding_catalog = onboarding_catalog or MemoryOnboardingCatalogStore()
     app.state.shop_media = shop_media or MemoryShopMediaStore()
