@@ -38,6 +38,12 @@ export function LandingHome() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
+            >
+              Login
+            </Link>
             <ThemeToggle />
             <Link
               href="/?platform=instagram"

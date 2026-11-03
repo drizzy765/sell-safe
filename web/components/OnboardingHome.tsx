@@ -42,9 +42,12 @@ export function OnboardingHome() {
             <a className="text-muted-foreground hover:text-foreground" href="/faq">
               FAQ
             </a>
-            <a className="text-muted-foreground hover:text-foreground" href="/privacy">
+            <a className="text-muted-foreground transition-colors hover:text-foreground" href="/privacy">
               Privacy
             </a>
+            <Link className="font-medium text-foreground transition-colors hover:text-primary" href="/login">
+              Login
+            </Link>
             <ThemeToggle />
           </div>
         </div>
