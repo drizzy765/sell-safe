@@ -52,7 +52,7 @@ export function CatalogView({
           <div className="h-12 w-12 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#e8e8f0]">
             {shop?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={shop.logo_url} alt="" className="h-full w-full object-cover" />
+              <img src={shop.logo_url} alt="" className="h-full w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#6e4af7]">
                 S
@@ -262,7 +262,7 @@ function ProductCard({ product }: { product: Product }) {
       <div className="aspect-square bg-[#f0f0f5]">
         {product.image_urls?.[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image_urls[0]} alt="" className="h-full w-full object-cover" />
+          <img src={product.image_urls[0]} alt="" className="h-full w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" />
         ) : null}
       </div>
       <div className="space-y-1 p-3">
@@ -293,10 +293,10 @@ function MediaCard({
             Drive source
           </div>
         ) : item.kind === "video" || item.content_type.startsWith("video/") ? (
-          <video src={item.url} className="h-full w-full object-cover" muted controls />
+          <video src={item.url} className="h-full w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" muted controls />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt="" className="h-full w-full object-cover" />
+          <img src={item.url} alt="" className="h-full w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" />
         )}
       </div>
       <div className="space-y-1 p-2">

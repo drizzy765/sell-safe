@@ -8,7 +8,6 @@ import { HeroChatMock } from "@/components/landing/HeroChatMock";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { LandingFaq } from "@/components/landing/LandingFaq";
 import { TrustStrip } from "@/components/landing/TrustStrip";
-import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { PaymentSafetyDemo } from "@/components/PaymentSafetyDemo";
@@ -51,14 +50,13 @@ export function LandingHome() {
       </header>
 
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-flow opacity-90" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-flow opacity-40" aria-hidden />
         <DotPattern className="fill-brand-blue/[0.10] [mask-image:radial-gradient(ellipse_at_center,white,transparent_72%)]" />
         <div className="relative mx-auto grid max-w-[1120px] items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:gap-14 md:py-28">
           <div>
             <BlurFade>
-              <h1 className="mb-5 text-[32px] font-bold leading-10 tracking-tight md:text-5xl md:leading-[1.12]">
-                Sell on Instagram. Catch{" "}
-                <AnimatedGradientText speed={0.9}>fake payments</AnimatedGradientText>.
+              <h1 className="mb-5 text-balance text-[32px] font-bold leading-10 tracking-tight md:text-5xl md:leading-[1.12]">
+                Sell on Instagram. Catch fake payments before you ship.
               </h1>
             </BlurFade>
             <BlurFade delay={0.1}>
