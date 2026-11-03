@@ -35,3 +35,5 @@ def test_health_reports_effective_llm_model() -> None:
     assert body["provider"] == "meta"
     assert body["text_model"] == "muse-spark-1.3"
     assert body["llm_key"] == "set"
+    assert body["llm_key_fingerprint"]  # hash prefix only, never the key
+    assert "LLM_test" not in body["llm_key_fingerprint"]
