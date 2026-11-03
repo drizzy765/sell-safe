@@ -1,5 +1,7 @@
 """Voice note handling: transcribe with Intron, then treat as text."""
 
+import logging
+
 from app.agent.graph.harness import run_turn
 from app.agent.templates import fallback_ask_type
 from app.channels.base import ChannelAdapter, InboundMessage
@@ -8,7 +10,9 @@ from app.db.echo_store import EchoStore
 from app.db.orders import OrderStore
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
-from app.speech.base import SpeechClient
+from app.speech.base import SpeechClient, TranscriptResult
+
+logger = logging.getLogger(__name__)
 
 
 async def handle_voice_note(
@@ -32,8 +36,26 @@ async def handle_voice_note(
     try:
         # Never log audio bytes.
         audio = await adapter.fetch_media(message.media_id)
+    except Exception:
+        await adapter.send_text(message.sender_id, fallback_ask_type(language))
+        return
+
+    result: TranscriptResult | None = None
+    try:
         result = await speech.transcribe(audio, language_hint=None)
     except Exception:
+        logger.exception("Primary STT (Intron) failed; trying provider fallback")
+    if result is None or not (result.text or "").strip():
+        # Fallback: the LLM provider's transcription. Meta Muse has no STT,
+        # so MetaProvider delegates to Groq Whisper when configured.
+        try:
+            fallback_text = await provider.transcribe(audio)
+            if (fallback_text or "").strip():
+                result = TranscriptResult(text=fallback_text, language=language, confidence=None)
+        except Exception:
+            logger.exception("Fallback STT (provider) failed")
+
+    if result is None:
         await adapter.send_text(message.sender_id, fallback_ask_type(language))
         return
 
@@ -52,6 +74,7 @@ async def handle_voice_note(
         language=result.language,
         transcript=transcript,
         asr_confidence=result.confidence,
+        media_path=message.media_id,
     )
 
     text_message = InboundMessage(
