@@ -20,6 +20,39 @@ from app.db.payments import PaymentStore
 from app.decisions.base import JevClient
 from app.llm.base import LLMProvider
 
+_PAYMENT_DETAILS_PHRASES = (
+    "account number",
+    "acct number",
+    "account details",
+    "bank details",
+    "payment details",
+    "your account",
+    "business account",
+    "send account",
+    "how do i pay",
+    "how can i pay",
+    "how to pay",
+    "how i go pay",
+    "how do i make payment",
+    "where do i pay",
+    "where should i pay",
+    "nomba account",
+)
+
+_PAYMENT_DETAILS_MISSING = {
+    "en": ("The seller has not added their bank details yet. Please hold on while they add them."),
+    "pcm": ("Seller never add bank details yet. Abeg hold on small make dem add am."),
+    "yo": "Olùtajà kò tí fi ẹ̀kúnrẹ́rẹ́ báńkì wọn síbẹ̀. Ẹ jọ̀wọ́ dúró díẹ̀ kí wọ́n fi síbẹ̀.",
+}
+
+
+def is_payment_details_request(text: str) -> bool:
+    """True when a buyer is asking how/where to pay (deterministic, no LLM)."""
+    normalized = " ".join((text or "").lower().split())
+    if not normalized or normalized.startswith("/"):
+        return False
+    return any(phrase in normalized for phrase in _PAYMENT_DETAILS_PHRASES)
+
 
 async def run_turn(
     message: InboundMessage,
@@ -105,7 +138,19 @@ async def run_turn(
         account_number=account_number,
     )
 
-    if state.intent in ("price_question", "order", "chit_chat"):
+    if state.intent != "payment_proof" and is_payment_details_request(message.text or ""):
+        # Deterministic: Jev/LLM must not gate payment details. Buyers asking
+        # for the account number get the saved payout (or a clear not-set reply).
+        state.intent = "payment_details"
+        payout = order_tools.payment_details()
+        state.tool_calls.append({"name": "get_payment_details", "arguments": {}, "result": payout})
+        if payout.get("configured"):
+            state.reply = str(payout.get("message") or "")
+        else:
+            state.reply = _PAYMENT_DETAILS_MISSING.get(
+                state.language, _PAYMENT_DETAILS_MISSING["en"]
+            )
+    elif state.intent in ("price_question", "order", "chit_chat"):
         state = await sales_agent(state, provider, catalog_tools, order_tools, business_name)
     elif state.intent == "payment_proof":
         if payment_store is None:

@@ -129,3 +129,71 @@ async def test_provider_failure_still_replies_with_fallback() -> None:
 
     assert state.reply  # fallback text, not an exception / empty reply
     assert state.errors  # failure is recorded for logs
+
+
+@pytest.mark.asyncio
+async def test_account_number_request_replies_with_saved_payout_even_if_misrouted() -> None:
+    """Buyers asking for account number must get the saved details directly.
+
+    Regression: 'What's the business account number' depended on Jev routing
+    plus LLM tool choice, and buyers got 'I'm not sure I understood'.
+    """
+    from app.db.shop_store import MemoryShopStore, ShopProfile
+
+    shops = MemoryShopStore()
+    shops.upsert(
+        ShopProfile(
+            id="shop1",
+            ig_account_id="s1",
+            handle="sellsafe.testshop.ng",
+            name="Mama Timi Provisions",
+            bank_name="OPay",
+            account_name="Mama Timi",
+            account_number="8012345678",
+        )
+    )
+    store = MemoryEchoStore()
+    store.seller_languages["s1"] = "en"
+    jev = FakeJev(intent="unknown", language="en")  # worst case: Jev misses it
+
+    state = await run_turn(
+        _message("What's the business account number"),
+        seller_id="s1",
+        buyer_id="b1",
+        channel_adapter=_FakeAdapter(),
+        store=store,
+        jev=jev,
+        provider=_RaisingProvider(),  # must not need the LLM at all
+        catalog_store=MemoryCatalogStore(),
+        order_store=MemoryOrderStore(),
+        payment_store=MemoryPaymentStore(),
+        shop_store=shops,
+    )
+
+    assert state.intent == "payment_details"
+    assert "8012345678" in state.reply
+    assert "Mama Timi" in state.reply
+
+
+@pytest.mark.asyncio
+async def test_account_number_request_without_payout_says_not_configured() -> None:
+    store = MemoryEchoStore()
+    store.seller_languages["s1"] = "en"
+    jev = FakeJev(intent="chit_chat", language="en")
+
+    state = await run_turn(
+        _message("account number want to make a purchase"),
+        seller_id="s1",
+        buyer_id="b1",
+        channel_adapter=_FakeAdapter(),
+        store=store,
+        jev=jev,
+        provider=_RaisingProvider(),
+        catalog_store=MemoryCatalogStore(),
+        order_store=MemoryOrderStore(),
+        payment_store=MemoryPaymentStore(),
+    )
+
+    assert state.intent == "payment_details"
+    assert state.reply
+    assert "8012" not in state.reply  # never invent a number
