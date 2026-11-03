@@ -36,6 +36,8 @@ from app.speech.base import SpeechClient
 class HealthResponse(BaseModel):
     status: str
     provider: str
+    text_model: str = ""
+    llm_key: str = "missing"
 
 
 def create_app(
@@ -101,7 +103,18 @@ def create_app(
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        return HealthResponse(status="ok", provider=resolved.llm_provider)
+        if resolved.llm_provider == "meta":
+            model = resolved.meta_text_model
+            key_set = bool(resolved.meta_api_key)
+        else:
+            model = resolved.groq_text_model
+            key_set = bool(resolved.groq_api_key)
+        return HealthResponse(
+            status="ok",
+            provider=resolved.llm_provider,
+            text_model=model,
+            llm_key="set" if key_set else "missing",
+        )
 
     @app.get("/privacy", response_class=HTMLResponse)
     def privacy() -> str:
