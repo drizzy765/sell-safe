@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
 
 type Props = {
   onConnected?: (username?: string) => void;
@@ -105,8 +106,8 @@ export function InstagramConnect({ onConnected, onDisconnected }: Props) {
   const connected = status === "connected";
 
   return (
-    <div className="rounded-xl border border-border bg-card p-8 text-center">
-      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
+    <div className="rounded-[28px] border border-border bg-card p-8 text-center shadow-panel">
+      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-[20px] bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 shadow-panel">
         <svg
           className="h-8 w-8 text-white"
           fill="currentColor"
@@ -117,7 +118,7 @@ export function InstagramConnect({ onConnected, onDisconnected }: Props) {
         </svg>
       </div>
 
-      <h3 className="mb-2 text-xl font-semibold">Connect Instagram</h3>
+      <h3 className="mb-2 text-balance text-xl font-semibold tracking-tight">Connect Instagram</h3>
       <p className="mb-6 text-sm text-muted-foreground">
         One click to connect your Instagram Business account. Sell-Safe will answer your DMs
         automatically.
@@ -128,15 +129,15 @@ export function InstagramConnect({ onConnected, onDisconnected }: Props) {
           <button
             type="button"
             disabled
-            className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white opacity-80"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white opacity-90"
           >
-            Connected{username ? ` · @${username}` : ""}
+            <Check size={16} strokeWidth={2.5} aria-hidden /> Connected{username ? ` · @${username}` : ""}
           </button>
           <button
             type="button"
             onClick={() => void handleDisconnect()}
             disabled={busy}
-            className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-6 py-3 text-sm font-medium transition-[background-color,transform] hover:bg-muted active:scale-[0.96] disabled:opacity-50"
           >
             Disconnect
           </button>
@@ -146,8 +147,9 @@ export function InstagramConnect({ onConnected, onDisconnected }: Props) {
           type="button"
           onClick={handleConnect}
           disabled={busy}
-          className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-panel transition-[opacity,transform] hover:opacity-95 active:scale-[0.96] disabled:opacity-50"
         >
+          {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
           {status === "connecting" ? "Connecting..." : status === "loading" ? "Checking..." : "Connect Instagram"}
         </button>
       )}

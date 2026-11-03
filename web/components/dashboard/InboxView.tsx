@@ -424,7 +424,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         {message.media_url && message.type === "image" ? (
           <div className="overflow-hidden rounded-2xl border border-[#dbdbdb] bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={message.media_url} alt="" className="max-h-64 w-full object-cover" />
+            <img src={message.media_url} alt="" className="max-h-64 w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" />
             {verdict ? (
               <div
                 className={`border-t px-3 py-2 text-xs font-semibold ${
@@ -458,7 +458,7 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
           <div className="w-56 overflow-hidden rounded-xl border border-[#dbdbdb] bg-white shadow-sm">
             {product.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.image_url} alt="" className="h-36 w-full object-cover" />
+              <img src={product.image_url} alt="" className="h-36 w-full object-cover [outline:1px_solid_oklch(0_0_0/0.1)] [outline-offset:-1px]" />
             ) : (
               <div className="flex h-36 items-center justify-center bg-[#f0f0f0] text-xs text-[#8e8e8e]">
                 Product

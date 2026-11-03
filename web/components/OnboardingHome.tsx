@@ -11,6 +11,8 @@ import { SampleReplyDemo } from "@/components/SampleReplyDemo";
 import { SellSafeLogo } from "@/components/SellSafeLogo";
 import { StepCard } from "@/components/StepCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BlurFade } from "@/components/magicui/blur-fade";
+import { Check } from "lucide-react";
 import { WhatsAppWaitlist } from "@/components/WhatsAppWaitlist";
 import { guides } from "@/content";
 
@@ -31,9 +33,9 @@ export function OnboardingHome() {
             <Link className="text-muted-foreground hover:text-foreground" href="/">
               Home
             </Link>
-            <a className="text-muted-foreground hover:text-foreground" href="#steps">
+            <Link className="text-muted-foreground transition-colors hover:text-foreground" href="/docs">
               Docs
-            </a>
+            </Link>
             <a className="text-muted-foreground hover:text-foreground" href="/status">
               Status
             </a>
@@ -50,7 +52,7 @@ export function OnboardingHome() {
 
       <main className="mx-auto max-w-[1080px] px-4 py-10 md:py-14">
         <section className="mb-10 space-y-4">
-          <h1 className="text-3xl font-semibold tracking-tight md:text-[40px] md:leading-[48px]">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-[40px] md:leading-[48px]">
             Connect Sell-Safe to your shop
           </h1>
           <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
@@ -60,15 +62,15 @@ export function OnboardingHome() {
         </section>
 
         <div className="grid gap-8 md:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="h-fit rounded-xl border border-border bg-muted p-5 md:sticky md:top-24">
+          <aside className="h-fit rounded-3xl border border-border bg-card p-5 shadow-panel md:sticky md:top-24">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Prerequisites
             </h2>
             <ul className="space-y-2 text-sm text-foreground">
               {guide.prerequisites.map((item) => (
                 <li key={item} className="flex gap-2">
-                  <span className="text-primary" aria-hidden>
-                    •
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden>
+                    <Check size={10} strokeWidth={3} />
                   </span>
                   <span>{item}</span>
                 </li>
