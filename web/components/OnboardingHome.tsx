@@ -33,9 +33,9 @@ export function OnboardingHome() {
             <Link className="text-muted-foreground hover:text-foreground" href="/">
               Home
             </Link>
-            <a className="text-muted-foreground hover:text-foreground" href="#steps">
+            <Link className="text-muted-foreground transition-colors hover:text-foreground" href="/docs">
               Docs
-            </a>
+            </Link>
             <a className="text-muted-foreground hover:text-foreground" href="/status">
               Status
             </a>

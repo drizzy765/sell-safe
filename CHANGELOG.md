@@ -6,6 +6,8 @@
 - **Dashboard premium pass.** Status strip (connection, reply mode, payout state, chats/orders/verified/fakes stats), payout-missing warning, skeleton loading, animated tab transitions (reduced-motion aware), mobile bottom nav + sticky header, sidebar account block.
 - **Deterministic payment-details replies.** Account-number / how-to-pay asks bypass the LLM and answer from saved payout details (or a clear not-configured message). See PR #24/#25 notes.
 
+- **Docs page.** New `/docs` with real seller + developer documentation (getting started, connect, catalog filename convention, reply modes, payment verdicts and trust levels, login/restore, troubleshooting from live failures, deploy/webhook notes). Nav Docs links now point to `/docs` instead of the setup anchor.
+
 ### Operator setup for login
 1. Supabase SQL editor: run `backend/app/db/migrations/0007_instagram_sessions.sql` and `0008_seller_accounts.sql`.
 2. Supabase Auth -> URL configuration: allow redirect `<WEB_ORIGIN>/auth/callback` (localhost + Vercel domain).
