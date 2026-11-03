@@ -78,5 +78,10 @@ class MetaProvider:
         headers = {"Authorization": f"Bearer {self._settings.meta_api_key}"}
         async with httpx.AsyncClient(transport=self._transport) as client:
             response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(
+                    f"Meta request failed ({exc.response.status_code}): {exc.response.text[:500]}"
+                ) from exc
         return response.json()
