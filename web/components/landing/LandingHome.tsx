@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { CatalogPreview } from "@/components/landing/CatalogPreview";
 import { Features } from "@/components/landing/Features";
@@ -15,7 +16,16 @@ import { SellSafeLogo } from "@/components/SellSafeLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WhatsAppWaitlist } from "@/components/WhatsAppWaitlist";
 
+type AuthState = { authenticated: boolean; email?: string; linked?: boolean };
+
 export function LandingHome() {
+  const [auth, setAuth] = useState<AuthState>({ authenticated: false });
+  useEffect(() => {
+    void fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data: AuthState) => setAuth(data))
+      .catch(() => undefined);
+  }, []);
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -38,19 +48,36 @@ export function LandingHome() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
-            >
-              Login
-            </Link>
-            <ThemeToggle />
-            <Link
-              href="/?platform=instagram"
-              className="hidden min-h-10 items-center rounded-md bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-transform duration-150 active:scale-[0.96] hover:opacity-90 sm:inline-flex"
-            >
-              Connect Instagram
-            </Link>
+            {auth.authenticated ? (
+              <>
+                <span className="hidden max-w-[180px] truncate text-sm text-muted-foreground lg:inline" title={auth.email}>
+                  {auth.email}
+                </span>
+                <ThemeToggle />
+                <Link
+                  href="/dashboard"
+                  className="inline-flex min-h-10 items-center rounded-md bg-gradient-brand px-3.5 py-2 text-sm font-semibold text-white transition-transform duration-150 active:scale-[0.96] hover:opacity-90"
+                >
+                  Open dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                >
+                  Login
+                </Link>
+                <ThemeToggle />
+                <Link
+                  href="/?platform=instagram"
+                  className="hidden min-h-10 items-center rounded-md bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-transform duration-150 active:scale-[0.96] hover:opacity-90 sm:inline-flex"
+                >
+                  Connect Instagram
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
