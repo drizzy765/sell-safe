@@ -15,3 +15,9 @@ demo/raw/
 .DS_Store
 supabase/.temp/
 .tmp/
+
+# local tool junk
+.playwright-mcp/
+*.tsbuildinfo
+sellsafe-dashboard-v2.zip
+docs/Untitled
