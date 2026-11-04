@@ -4,6 +4,18 @@
 
 Built by Agoro Oluwatimilehin (GitHub: drizzy765) for the Meta Global AI Developer Hackathon (Indie track).
 
+## Try it now
+
+- **Live app:** https://sell-safe-three.vercel.app
+- **Judge sandbox (no login):** chat as a buyer and send a fake receipt — https://sell-safe-three.vercel.app/#sandbox
+- **Demo seller dashboard:** https://sell-safe-three.vercel.app/dashboard?demo=1
+- **Interactive benchmark charts:** https://sell-safe-three.vercel.app/benchmark
+- **Muse benchmark write-up:** [docs/benchmark_muse.md](docs/benchmark_muse.md)
+
+**Headline result:** on the 20-case payment-verification benchmark, Sell-Safe
+confirmed **zero** fake receipts ([evals/report.md](evals/report.md)). The LLM
+never decides a payment verdict — deterministic rules do.
+
 ---
 
 ## What Changed (Oct 30, 2026)
