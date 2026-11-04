@@ -168,3 +168,7 @@ def test_summary_counts_real_verdicts() -> None:
     assert body["stats"]["orders"] == 2
     assert body["stats"]["naira_verified"] == 11000
     assert body["stats"]["fakes_caught"] == 1
+    analytics = body["analytics"]
+    assert analytics["verdicts"] == {"CONFIRMED": 1, "SUSPICIOUS": 1}
+    assert analytics["total_customers"] >= 2
+    assert body["receipts"][0]["amount_ngn"] == 11000

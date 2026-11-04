@@ -370,6 +370,95 @@ async def dashboard_summary(
     except Exception:
         orders_count = 0
 
+    # Detailed chat + customer analytics for the dashboard (demo-ready, real data).
+    verdict_counts: dict[str, int] = {}
+    receipts_log: list[dict] = []
+    customers_by_buyer: dict[str, dict] = {}
+    try:
+        for order in seller_orders:
+            buyer_key = str(order.get("buyer_id") or "")
+            entry = customers_by_buyer.setdefault(
+                buyer_key,
+                {
+                    "buyer_id": buyer_key,
+                    "orders": 0,
+                    "verified_ngn": 0,
+                    "fakes": 0,
+                    "last_verdict": "",
+                },
+            )
+            if order.get("status") != "cancelled":
+                entry["orders"] += 1
+            payment = payment_store.get_payment_for_order(str(order.get("id")))
+            if payment is None:
+                continue
+            verdict_row = payment_store.get_latest_verdict(str(payment.get("id")))
+            verdict_value = str((verdict_row or {}).get("verdict") or "")
+            if not verdict_value:
+                continue
+            verdict_counts[verdict_value] = verdict_counts.get(verdict_value, 0) + 1
+            entry["last_verdict"] = verdict_value
+            if verdict_value == "CONFIRMED":
+                entry["verified_ngn"] += int(order.get("total_kobo") or 0) // 100
+            elif verdict_value in ("SUSPICIOUS", "UNVERIFIED"):
+                entry["fakes"] += 1
+            receipts_log.append(
+                {
+                    "id": str((verdict_row or {}).get("id") or payment.get("id")),
+                    "verdict": verdict_value,
+                    "amount_ngn": int(order.get("total_kobo") or 0) // 100,
+                    "reasons": list((verdict_row or {}).get("reasons") or []),
+                    "order_ref": str(order.get("ref") or ""),
+                    "buyer_id": buyer_key,
+                }
+            )
+    except Exception:
+        receipts_log = []
+
+    language_counts: dict[str, int] = {}
+    for conv in conversations:
+        lang = str(conv.get("language") or "en")
+        language_counts[lang] = language_counts.get(lang, 0) + 1
+        buyer_key = str(conv.get("buyer_id") or "")
+        entry = customers_by_buyer.setdefault(
+            buyer_key,
+            {"buyer_id": buyer_key, "orders": 0, "verified_ngn": 0, "fakes": 0, "last_verdict": ""},
+        )
+        entry.update(
+            {
+                "buyer": conv.get("buyer") or buyer_key,
+                "language": lang,
+                "last_message": conv.get("preview") or "",
+                "last_reply": conv.get("reply") or "",
+                "at": conv.get("at") or conv.get("created_at") or "",
+                "unread": int(conv.get("unread") or 0),
+                "paused": bool(conv.get("paused")),
+                "reply_mode": conv.get("reply_mode") or "",
+                "channel": conv.get("channel") or "instagram",
+            }
+        )
+    customers = sorted(
+        customers_by_buyer.values(),
+        key=lambda c: (c.get("verified_ngn", 0), c.get("orders", 0)),
+        reverse=True,
+    )
+    buyers_with_orders = sum(1 for c in customers if c.get("orders"))
+    analytics = {
+        "total_conversations": len(conversations),
+        "total_customers": len(customers),
+        "languages": language_counts,
+        "ai_managed": sum(1 for c in conversations if not c.get("paused")),
+        "seller_takeover": sum(1 for c in conversations if c.get("paused")),
+        "verdicts": verdict_counts,
+        "buyers_with_orders": buyers_with_orders,
+        "order_conversion_pct": round(100 * buyers_with_orders / len(customers))
+        if customers
+        else 0,
+        "customers": customers,
+    }
+    if not demo_mode:
+        receipts = receipts_log
+
     pending_drafts = control.list_drafts(seller_id, status="pending")
     unread_total = sum(int(c.get("unread") or 0) for c in conversations)
 
@@ -396,6 +485,7 @@ async def dashboard_summary(
         "media": [m.public_dict() for m in media],
         "inbox": inbox,
         "receipts": receipts,
+        "analytics": analytics,
         "reply_drafts": [d.public_dict() for d in pending_drafts],
         "settings": {
             "reply_mode": shop.reply_mode or "auto",

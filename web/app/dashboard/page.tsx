@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { CatalogView } from "@/components/dashboard/CatalogView";
+import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { InboxView } from "@/components/dashboard/InboxView";
 import { SettingsView } from "@/components/dashboard/SettingsView";
 import {
@@ -285,7 +286,7 @@ function DashboardInner() {
   const nav: { id: NavTab; label: string; badge?: number; Icon: typeof Inbox }[] = [
     { id: "inbox", label: "Inbox", badge: unread || undefined, Icon: Inbox },
     { id: "catalog", label: "Catalog", Icon: LayoutGrid },
-    { id: "orders", label: "Orders", Icon: ShoppingBag },
+    { id: "orders", label: "Analysis", Icon: ShoppingBag },
     { id: "outreach", label: "Outreach", Icon: Megaphone },
     { id: "settings", label: "Settings", Icon: Settings },
   ];
@@ -420,12 +421,7 @@ function DashboardInner() {
           />
         ) : null}
 
-        {tab === "orders" ? (
-          <Placeholder
-            title="Orders"
-            body="Kanban (inquiry → awaiting payment → paid & verified → delivered) lands after the Nov 3–4 benchmark freeze."
-          />
-        ) : null}
+        {tab === "orders" ? <AnalyticsView data={data!} /> : null}
 
         {tab === "outreach" ? (
           <Placeholder
