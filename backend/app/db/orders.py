@@ -197,9 +197,7 @@ class SupabaseOrderStore:
         return found.data or []
 
     def list_orders(self, seller_id: str) -> list[dict]:
-        found = (
-            self._client.table("orders").select("*").eq("seller_id", seller_id).execute()
-        )
+        found = self._client.table("orders").select("*").eq("seller_id", seller_id).execute()
         return found.data or []
 
     def _unique_ref(self) -> str:
