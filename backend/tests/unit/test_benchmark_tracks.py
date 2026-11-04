@@ -85,8 +85,9 @@ async def test_c5_order_flow_creates_matching_order_row() -> None:
                     {
                         "id": "c1",
                         "name": "create_order",
-                        "arguments": ('{"items":[{"product_id":"p1","qty":1,'
-                         '"unit_price_kobo":1100000}]}'),
+                        "arguments": (
+                            '{"items":[{"product_id":"p1","qty":1,"unit_price_kobo":1100000}]}'
+                        ),
                     }
                 ],
             },
