@@ -27,10 +27,45 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+
+const DEMO_SUMMARY: Summary = {
+  shop: {
+    id: "demo-shop", name: "Mama Timi Provisions", handle: "sellsafe.testshop.ng",
+    account_number_set: true, account_number_masked: "••••2792", bank_name: "OPay",
+    account_name: "Oluwatimilehin Agoro", reply_mode: "auto",
+  },
+  stats: { chats_today: 3, orders: 2, naira_verified: 11000, fakes_caught: 1, avg_reply_seconds: 4, unread_inbox: 1, pending_drafts: 1 },
+  products: [
+    { id: "p1", name: "Palm Oil 5L", price_ngn: 11000, category: "Oils", description: "", image_urls: [], stock_status: "in_stock", status: "live" },
+    { id: "p2", name: "Tomato Paste Carton", price_ngn: 16000, category: "Provisions", description: "", image_urls: [], stock_status: "in_stock", status: "live" },
+    { id: "p3", name: "Long Grain Rice 5kg", price_ngn: 9500, category: "Grains", description: "", image_urls: [], stock_status: "in_stock", status: "live" },
+  ],
+  drafts: [], media: [],
+  inbox: [
+    { id: "c1", buyer_id: "b1", channel: "instagram", buyer: "testicles22", language: "pcm", preview: "I don send am (receipt)", reply: "Thanks, we go check am quick and confirm soon.", at: "today 12:45", unread: 1, paused: false, reply_mode: "auto", demo: true },
+    { id: "c2", buyer_id: "b2", channel: "instagram", buyer: "adaeze_styles", language: "pcm", preview: "Abeg how much be the honey beans?", reply: "Na ₦6,000 per paint bucket.", at: "today 10:14", unread: 0, paused: false, reply_mode: "auto", demo: true },
+  ],
+  receipts: [
+    { id: "r1", verdict: "SUSPICIOUS", amount_ngn: 11000, reasons: ["receipt looks generated", "no matching bank evidence"], order_ref: "SS-1001", buyer_id: "b1" },
+  ],
+  reply_drafts: [],
+  settings: { reply_mode: "auto", smart_threshold_ngn: 50000, demo_mode: true, seller_email: "", catalog_skipped: false },
+  demo_mode: true,
+  analytics: {
+    total_conversations: 2, total_customers: 2, languages: { pcm: 2 }, ai_managed: 2, seller_takeover: 0,
+    verdicts: { SUSPICIOUS: 1 }, buyers_with_orders: 1, order_conversion_pct: 50,
+    customers: [
+      { buyer_id: "b1", buyer: "testicles22", language: "pcm", last_message: "I don send am (receipt)", orders: 1, verified_ngn: 0, fakes: 1, last_verdict: "SUSPICIOUS", unread: 1, paused: false },
+      { buyer_id: "b2", buyer: "adaeze_styles", language: "pcm", last_message: "Abeg how much be the honey beans?", orders: 0, verified_ngn: 0, fakes: 0, last_verdict: "", unread: 0, paused: false },
+    ],
+  },
+};
+
 function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = (searchParams.get("tab") || "catalog") as NavTab;
+  const demoMode = searchParams.get("demo") === "1";
+  const tabParam = (searchParams.get("tab") || (demoMode ? "inbox" : "catalog")) as NavTab;
   const [tab, setTab] = useState<NavTab>(
     ["inbox", "catalog", "orders", "outreach", "settings"].includes(tabParam)
       ? tabParam
@@ -63,6 +98,11 @@ function DashboardInner() {
   }
 
   const load = useCallback(async () => {
+    if (demoMode) {
+      setData(DEMO_SUMMARY);
+      setError("");
+      return;
+    }
     const response = await fetch("/api/dashboard/summary", { cache: "no-store" });
     const body = (await response.json().catch(() => ({}))) as Summary & { detail?: string };
     if (!response.ok) {
@@ -72,7 +112,7 @@ function DashboardInner() {
     }
     setData(body);
     setError("");
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     void load().catch(() => setError("Could not reach the API."));
@@ -97,7 +137,7 @@ function DashboardInner() {
 
   function switchTab(next: NavTab) {
     setTab(next);
-    router.replace(`/dashboard?tab=${next}`);
+    router.replace(demoMode ? `/dashboard?demo=1&tab=${next}` : `/dashboard?tab=${next}`);
   }
 
   async function onUpload(files: FileList | null) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CatalogPreview } from "@/components/landing/CatalogPreview";
+import { JudgeSandbox } from "@/components/landing/JudgeSandbox";
 import { Features } from "@/components/landing/Features";
 import { HeroChatMock } from "@/components/landing/HeroChatMock";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -45,6 +46,9 @@ export function LandingHome() {
             </a>
             <a className="text-muted-foreground transition-colors duration-150 hover:text-foreground" href="#faq">
               FAQ
+            </a>
+            <a className="text-muted-foreground transition-colors duration-150 hover:text-foreground" href="/benchmark">
+              Benchmark
             </a>
           </nav>
           <div className="flex items-center gap-3">
@@ -128,6 +132,21 @@ export function LandingHome() {
 
         <section id="demo" className="scroll-mt-24 py-20 md:py-28">
           <PaymentSafetyDemo showCta />
+        </section>
+
+        <section id="sandbox" className="scroll-mt-24 pb-20 md:pb-28" aria-label="Try the agent">
+          <div className="mx-auto max-w-xl text-center">
+            <h2 className="text-2xl font-semibold tracking-tight md:text-[28px]">Try the agent yourself</h2>
+            <p className="mb-8 mt-2 text-muted-foreground">
+              No Instagram account needed. Chat as a buyer, send a fake receipt, watch it get caught.
+            </p>
+          </div>
+          <JudgeSandbox />
+          <p className="mt-6 text-center text-sm">
+            <a className="font-medium text-[#2876fe] underline" href="/benchmark">See the measured benchmark →</a>
+            {" · "}
+            <a className="font-medium text-[#2876fe] underline" href="/dashboard?demo=1">Explore the seller dashboard →</a>
+          </p>
         </section>
 
         <Features />
