@@ -36,7 +36,40 @@ export async function verifySupabaseUser(accessToken: string): Promise<SupabaseU
 
 export async function currentUser(): Promise<SupabaseUser | null> {
   const store = await cookies();
-  return verifySupabaseUser(store.get(AUTH_ACCESS_COOKIE)?.value || "");
+  const user = await verifySupabaseUser(store.get(AUTH_ACCESS_COOKIE)?.value || "");
+  if (user) return user;
+  // Access cookie lives 1h; refresh silently so sellers stay logged in.
+  const refreshToken = store.get(AUTH_REFRESH_COOKIE)?.value || "";
+  if (!refreshToken || !supabaseConfigured()) return null;
+  try {
+    const response = await fetch(`${supabaseUrl()}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { apikey: supabaseAnonKey(), "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      user?: { id?: string; email?: string };
+    };
+    if (!body.access_token || !body.user?.id) return null;
+    const secure = process.env.NODE_ENV === "production";
+    store.set(AUTH_ACCESS_COOKIE, body.access_token, {
+      httpOnly: true, sameSite: "lax", path: "/", secure,
+      maxAge: Math.min(Number(body.expires_in) || 3600, 3600),
+    });
+    if (body.refresh_token) {
+      store.set(AUTH_REFRESH_COOKIE, body.refresh_token, {
+        httpOnly: true, sameSite: "lax", path: "/", secure, maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+    return { id: body.user.id, email: body.user.email };
+  } catch {
+    return null;
+  }
 }
 
 export async function backendAuth(path: string, init: RequestInit): Promise<Response | null> {
