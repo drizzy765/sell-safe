@@ -46,6 +46,68 @@ _PAYMENT_DETAILS_MISSING = {
 }
 
 
+_CATALOG_BROWSE_PHRASES = (
+    "wetin dey your catalog",
+    "wetin dey catalog",
+    "wetin you get",
+    "wetin you dey sell",
+    "wetin dey shop",
+    "what do you have",
+    "what do you sell",
+    "what is in your catalog",
+    "what's in your catalog",
+    "show me your products",
+    "show me your catalog",
+    "send picture",
+    "send pictures",
+    "your catalog",
+    "your products",
+    "list your products",
+    "i wan buy something",
+    "i want to buy something",
+    "i wan buy",
+    "i want to buy",
+)
+
+_CATALOG_EMPTY = {
+    "en": "We don't have any products listed yet. Please check back soon.",
+    "pcm": "We never add any product yet. Abeg check back small time.",
+    "yo": "A kò tí fi ọja kankan síbẹ̀. Ẹ jọ̀wọ́ padà wá díẹ̀ lẹ́yìn.",
+}
+
+
+def is_catalog_browse_request(text: str) -> bool:
+    """True when a buyer asks what the shop sells (deterministic, no LLM)."""
+    normalized = " ".join((text or "").lower().split())
+    if not normalized or normalized.startswith("/"):
+        return False
+    return any(phrase in normalized for phrase in _CATALOG_BROWSE_PHRASES)
+
+
+def _format_price(price_kobo: object) -> str:
+    try:
+        kobo = int(price_kobo or 0)
+    except (TypeError, ValueError):
+        return ""
+    naira = kobo / 100
+    return f"₦{naira:,.0f}" if naira == int(naira) else f"₦{naira:,.2f}"
+
+
+def _catalog_browse_reply(products: list[dict], language: str) -> str:
+    if not products:
+        return _CATALOG_EMPTY.get(language, _CATALOG_EMPTY["en"])
+    lines = []
+    for product in products[:5]:
+        name = str(product.get("name") or "Product")
+        price = _format_price(product.get("price_kobo"))
+        lines.append(f"• {name} — {price}" if price else f"• {name}")
+    if language == "pcm":
+        return "Na wetin we get be this:\n" + "\n".join(lines) + "\nTell me which one you want."
+    if language == "yo":
+        return "Èyí ni ohun tí a ní:\n" + "\n".join(lines) + "\nSọ èyí tí o fẹ́ fún mi."
+    return "Here's what we have:\n" + "\n".join(lines) + "\nTell me which one you want."
+
+
 def is_payment_details_request(text: str) -> bool:
     """True when a buyer is asking how/where to pay (deterministic, no LLM)."""
     normalized = " ".join((text or "").lower().split())
@@ -150,6 +212,15 @@ async def run_turn(
             state.reply = _PAYMENT_DETAILS_MISSING.get(
                 state.language, _PAYMENT_DETAILS_MISSING["en"]
             )
+    elif is_catalog_browse_request(message.text or ""):
+        # Deterministic: browsing asks get the real catalog list with prices,
+        # never an LLM guess or a generic fallback (pidgin asks included).
+        state.intent = "catalog_browse"
+        products = catalog_tools.search_catalog(query="", max_results=5)
+        state.tool_calls.append(
+            {"name": "search_catalog", "arguments": {"query": ""}, "result": products}
+        )
+        state.reply = _catalog_browse_reply(products, state.language)
     elif state.intent in ("price_question", "order", "chit_chat"):
         state = await sales_agent(state, provider, catalog_tools, order_tools, business_name)
     elif state.intent == "payment_proof":
