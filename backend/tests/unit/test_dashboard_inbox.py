@@ -116,25 +116,53 @@ def test_summary_counts_real_verdicts() -> None:
     )
     shops = MemoryShopStore()
     shops.upsert(
-        ShopProfile(id="shop-1", ig_account_id="ig-1", handle="sellsafe.testshop.ng",
-                    name="Mama Timi Provisions", confirmed=True, reply_mode="auto")
+        ShopProfile(
+            id="shop-1",
+            ig_account_id="ig-1",
+            handle="sellsafe.testshop.ng",
+            name="Mama Timi Provisions",
+            confirmed=True,
+            reply_mode="auto",
+        )
     )
     store = MemoryEchoStore()
     seller_id = store.ensure_seller("ig-1", channel="instagram")
     orders = MemoryOrderStore()
     payments = MemoryPaymentStore()
     good = orders.create_order(seller_id=seller_id, buyer_id="b1", items=[], total_kobo=1_100_000)
-    pay1 = payments.get_or_create_payment(order_id=good["id"], method="transfer", expected_kobo=1_100_000)
-    payments.save_verdict(payment_id=pay1["id"], verdict="CONFIRMED", confidence=0.99,
-                          release_allowed=True, reasons=[], rule_hits=[])
+    pay1 = payments.get_or_create_payment(
+        order_id=good["id"], method="transfer", expected_kobo=1_100_000
+    )
+    payments.save_verdict(
+        payment_id=pay1["id"],
+        verdict="CONFIRMED",
+        confidence=0.99,
+        release_allowed=True,
+        reasons=[],
+        rule_hits=[],
+    )
     fake = orders.create_order(seller_id=seller_id, buyer_id="b2", items=[], total_kobo=1_100_000)
-    pay2 = payments.get_or_create_payment(order_id=fake["id"], method="transfer", expected_kobo=1_100_000)
-    payments.save_verdict(payment_id=pay2["id"], verdict="SUSPICIOUS", confidence=0.9,
-                          release_allowed=False, reasons=["receipt_looks_tampered"], rule_hits=[])
+    pay2 = payments.get_or_create_payment(
+        order_id=fake["id"], method="transfer", expected_kobo=1_100_000
+    )
+    payments.save_verdict(
+        payment_id=pay2["id"],
+        verdict="SUSPICIOUS",
+        confidence=0.9,
+        release_allowed=False,
+        reasons=["receipt_looks_tampered"],
+        rule_hits=[],
+    )
     client = TestClient(
-        create_app(settings=_settings(), store=store,
-                   transport=httpx.MockTransport(lambda r: httpx.Response(404)),
-                   instagram_sessions=sessions, shops=shops, orders=orders, payments=payments)
+        create_app(
+            settings=_settings(),
+            store=store,
+            transport=httpx.MockTransport(lambda r: httpx.Response(404)),
+            instagram_sessions=sessions,
+            shops=shops,
+            orders=orders,
+            payments=payments,
+        )
     )
     body = client.get("/api/dashboard/summary", headers={"X-IG-Session": session_id}).json()
     assert body["stats"]["orders"] == 2
