@@ -65,8 +65,6 @@ _CATALOG_BROWSE_PHRASES = (
     "list your products",
     "i wan buy something",
     "i want to buy something",
-    "i wan buy",
-    "i want to buy",
 )
 
 _CATALOG_EMPTY = {
