@@ -92,25 +92,24 @@ The LLM phrases replies. Only the deterministic verification engine sets verdict
 - **Storage:** Supabase Storage (private buckets)
 - **Channels:** Instagram Messaging API (working), WhatsApp Cloud API (blocked, waitlist active)
 - **Payments:** Paystack test mode; USDC on Base via direct JSON-RPC (default Base Sepolia). Flutterwave/Mono/RefPay not used.
-- **Speech:** Intron Sahara v2.5 (stretch)
+- **Speech:** Intron Sahara (live; provider transcribe fallback)
 - **Frontend:** Next.js on Vercel (onboarding site)
 - **Hosting:** Render or Railway (API)
 
 ---
 
-## Current Status (Oct 30, 2026)
+## Current Status (Nov 4, 2026) — live
 
-- ✅ Foundation complete: FastAPI, tests, CI, Supabase schema
-- ✅ LLM layer: Groq and Meta providers
-- ✅ Catalog: photo → extraction → saved product
-- ✅ Buyer chat: price questions, orders in 3 languages
-- ✅ Instagram adapter: working DMs
-- ⏳ Payment verification: Tasks 15-20 (P0, in progress)
-- ⏳ WhatsApp: waitlist system (P1, planned)
-- ⏳ Simplified onboarding: one-click connect (P2, planned)
-- ⏳ Demo features: sample reply, safety demo (P3-P4, planned)
+- ✅ Live: backend on Render, web on Vercel, Instagram DMs auto-replied on a real test shop
+- ✅ LLM: Meta Muse primary (`muse-spark-1.3`), Groq fallback on any provider failure
+- ✅ Catalog: photo → Muse vision extraction → saved product; deterministic browse/prices in English, Pidgin, Yoruba
+- ✅ Buyer chat + voice notes: Intron Sahara transcription, pidgin replies, deterministic account-number answers
+- ✅ Payment verification: deterministic verdict engine (LLM never confirms payment) — benchmarked 20/20, **zero fake receipts confirmed** ([evals/report.md](evals/report.md), [docs/benchmark_muse.md](docs/benchmark_muse.md))
+- ✅ Seller login: Supabase magic link; Instagram connection and shop restored across devices/restarts
+- ✅ Dashboard: real inbox, catalog, Analysis tab (chat/customer/verification logs)
+- ⏳ WhatsApp: blocked by Meta (131031); waitlist active
 
-**Tests:** 155/156 passing. `pytest -q -m "not live"` green.
+**Tests:** 238 passing. `pytest -q -m "not live"` green; CI green (ruff + pytest).
 
 ---
 
@@ -141,6 +140,8 @@ cp .env.example .env        # fill values locally; NEVER commit .env
 # backend/app/db/migrations/0004_evidence_hashes.sql
 # backend/app/db/migrations/0005_whatsapp_waitlist.sql
 # backend/app/db/migrations/0006_crypto_payments.sql
+# backend/app/db/migrations/0007_instagram_sessions.sql
+# backend/app/db/migrations/0008_seller_accounts.sql
 
 uvicorn app.main:app --reload --port 8000
 
