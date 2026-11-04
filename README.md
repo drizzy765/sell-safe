@@ -1,208 +1,150 @@
-# Sell-Safe 🛡️
+# Sell-Safe
 
-**Payment safety layer for Nigerian small sellers on Instagram and WhatsApp.** Verifies transfer screenshots against real bank evidence before goods leave the shop. Speaks Yoruba, Pidgin and English.
+**Payment safety layer for Nigerian small sellers on Instagram.**
 
-Built by Agoro Oluwatimilehin (GitHub: drizzy765) for the Meta Global AI Developer Hackathon (Indie track).
+Sell-Safe answers buyer DMs, presents the seller's catalog with real prices,
+and verifies transfer screenshots against bank evidence before goods leave
+the shop. It works in English, Nigerian Pidgin, and Yoruba — over text and
+voice notes.
 
-## Try it now
+Built by Agoro Oluwatimilehin (GitHub: drizzy765) for the Meta Global AI
+Developer Hackathon, Indie track ("Build for Your World").
 
-- **Live app:** https://sell-safe-three.vercel.app
-- **Judge sandbox (no login):** chat as a buyer and send a fake receipt — https://sell-safe-three.vercel.app/#sandbox
-- **Demo seller dashboard:** https://sell-safe-three.vercel.app/dashboard?demo=1
-- **Interactive benchmark charts:** https://sell-safe-three.vercel.app/benchmark
-- **Muse benchmark write-up:** [docs/benchmark_muse.md](docs/benchmark_muse.md)
+## Try it
+
+| | |
+|---|---|
+| Live app | https://sell-safe-three.vercel.app |
+| Judge sandbox (no login) | https://sell-safe-three.vercel.app/#sandbox |
+| Demo seller dashboard | https://sell-safe-three.vercel.app/dashboard?demo=1 |
+| Interactive benchmark | https://sell-safe-three.vercel.app/benchmark |
+| Muse benchmark write-up | [docs/benchmark_muse.md](docs/benchmark_muse.md) |
 
 **Headline result:** on the 20-case payment-verification benchmark, Sell-Safe
 confirmed **zero** fake receipts ([evals/report.md](evals/report.md)). The LLM
-never decides a payment verdict — deterministic rules do.
+never decides a payment verdict; a deterministic verification engine does.
 
----
+## The problem
 
-## What Changed (Oct 30, 2026)
+Small sellers on Instagram and WhatsApp lose goods to fake transfer
+screenshots. A buyer sends a convincing receipt image, the seller ships the
+product, and the money never arrives.
 
-**New priorities based on user feedback:**
+Sell-Safe closes that gap:
 
-1. **Payment verification is now P0.** The core promise: fake screenshots get flagged SUSPICIOUS, real Paystack webhooks get CONFIRMED. This must be flawless.
+1. Meta Muse vision reads the receipt (amount, recipient, reference, status).
+2. Deterministic rules check it against the order and any bank evidence
+   (webhook, bank alert, transaction record).
+3. The verdict — CONFIRMED, NOT_FOUND, SUSPICIOUS, or UNVERIFIED — decides
+   whether goods may be released. Only a human seller can override.
 
-2. **WhatsApp is locked** (Meta business verification blocked, error 131031). **Pivoted to Instagram-first** with a WhatsApp waitlist. When WhatsApp unblocks, we'll notify sellers via WhatsApp with a one-tap connect link.
+Prices, account numbers, and payment verdicts are never invented by the
+model. Catalog prices come from the seller's store, payout details from the
+seller's saved bank account, and verdicts from rules — the LLM only
+converses.
 
-3. **Simplified onboarding.** Instead of 7 technical Meta setup steps, sellers get one "Connect Instagram" button. Technical complexity hidden.
+## How it works
 
-4. **Prove value first.** New sellers see a sample AI reply to a mock customer question *before* doing any work. Then a payment safety demo showing fake vs real screenshots.
+**For sellers**
 
----
+1. Connect Instagram with one button (OAuth; no technical setup).
+2. Add products by photo or filename (`Name - NGN price.jpg`); Muse vision
+   extracts the fields, the seller confirms.
+3. Save payout details once. Sell-Safe handles buyer chats from there.
+4. Review receipts in the dashboard. The Analysis tab logs every customer,
+   conversation, and verdict with its reasons.
 
-## The Problem
+**For buyers**
 
-Small sellers on WhatsApp and Instagram lose goods to fake transfer screenshots. A "buyer" sends a convincing screenshot — the seller ships the product — the money never arrives.
+1. DM the shop on Instagram; ask prices in English, Pidgin, or Yoruba, by
+   text or voice note.
+2. Place an order and transfer to the seller's account.
+3. Send the receipt photo.
+4. Sell-Safe verifies it. Confirmed payments ship; suspicious ones are held
+   for the seller — automatically, in the buyer's own language.
 
-Sell-Safe catches this by:
-1. Reading the screenshot with AI vision
-2. Checking against real bank evidence (Paystack webhook or forwarded bank alert)
-3. Returning a verdict: **CONFIRMED**, **NOT FOUND**, or **SUSPICIOUS**
+**Seller accounts** persist via Supabase magic-link login: connect once and
+the shop, Instagram session, and dashboard are restored on any device.
 
-The LLM phrases replies. Only the deterministic verification engine sets verdicts.
+## Architecture
 
----
+| Layer | Technology |
+|---|---|
+| Buyer/seller web app | Next.js (TypeScript) on Vercel |
+| API | FastAPI (Python 3.11, async), Pydantic v2, on Render |
+| LLM | Meta Muse — Spark for chat/agent, Muse vision for images; Groq as logged fallback |
+| Speech | Intron Sahara transcription; provider transcribe fallback |
+| Database and auth | Supabase Postgres (RLS), Supabase Auth magic links |
+| Channel | Instagram Messaging API (live). WhatsApp adapter built to the same interface; launch blocked by Meta verification (131031), waitlist active |
+| Payments evidence | Bank transfer screenshots, Paystack webhook, USDC on Base (testnet default) |
 
-## Features
+Design invariants: money is integer kobo; timestamps are UTC; every webhook
+verifies its signature on the raw body, dedupes, returns 200 fast, and
+processes asynchronously; no secrets in code or logs.
 
-| Priority | Feature | Status |
-|---|---|---|
-| **P0** | Payment verification: screenshot → extraction → rules → verdict | In progress (Tasks 15-20) |
-| **P0** | Paystack webhook: real bank evidence → CONFIRMED | In progress |
-| **P1** | WhatsApp waitlist: collect phone numbers, notify on unblock | Planned (Nov 1) |
-| **P2** | Simplified Instagram: one-click connect, hide technical steps | On the Instagram tab |
-| **P2** | Seller login: Supabase magic link; shop + Instagram restored after restart | `/login`, dashboard account block |
-| **P3** | Sample reply demo: show AI reply before seller does any work | Shown after connect |
-| **P4** | Payment safety demo: fake vs real screenshot comparison | Shown after connect |
-| **P5** | Photo → catalog item | ✅ Complete |
-| **P5** | Buyer chat: prices, orders, Yoruba/Pidgin/English | ✅ Complete |
-| **P0** | USDC on Base: paste tx hash → on-chain verify (no RefPay) | In tree (Base Sepolia default) |
-| **Stretch** | Profile import from Instagram posts (opt-in) | If time |
-| **Stretch** | Chat-style onboarding | If time |
-| **Stretch** | Messenger adapter | If time |
+## Benchmark
 
----
+Measured 2026-11-04 (git `c851352`); see [docs/benchmark.md](docs/benchmark.md)
+for the claim-by-claim table.
 
-## How It Works
+| Track | Result |
+|---|---|
+| Payment verdicts (20 synthetic cases) | 20/20 passed; false CONFIRMED = 0 |
+| Prompt injection (6 trials) | 6/6 blocked by the reply guard |
+| Routing (English / Pidgin / Yoruba) | Deterministic browse + localized replies; order rows match goals |
+| Catalog vision (4 labeled photos) | 1/4 exact, 3 safe abstentions, 0 confident-wrong fields |
+| Voice (live) | Pidgin voice note transcribed and answered in Pidgin |
 
-### For Sellers
+The benchmark also found real bugs before judges could: a provider outage
+silencing buyers (fixed with logged Groq fallback) and a browse phrase
+hijacking orders (fixed and regression-tested). Full model comparison:
+[docs/benchmark_muse.md](docs/benchmark_muse.md). The micro1 eval plan and
+results pack: [docs/benchmark_micro1.md](docs/benchmark_micro1.md).
 
-1. **Connect Instagram** — one button, no technical setup
-2. **See sample reply** — Sell-Safe shows how it would answer "How much?"
-3. **Watch safety demo** — fake screenshot caught, real payment confirmed
-4. **Start selling** — catalog, orders, payment verification all automated
+## Current status
 
-### For Buyers
+Live as of Nov 4, 2026: production backend and web app deployed, Instagram
+auto-replies running on a real test shop, payment verification benchmarked,
+seller login and dashboard analytics shipped. WhatsApp remains blocked on
+Meta's side; the waitlist is collecting sellers.
 
-1. DM the shop on Instagram (WhatsApp coming soon)
-2. Ask prices in English, Pidgin, or Yoruba
-3. Place order, get unique reference (SS-1042)
-4. Send transfer screenshot
-5. Sell-Safe verifies — CONFIRMED → goods ship, SUSPICIOUS → goods held
+Tests: 238 passing (`pytest -q -m "not live"`); CI (ruff + pytest) green.
 
----
-
-## Stack
-
-- **Backend:** FastAPI (Python 3.11), Pydantic v2, async architecture
-- **LLM:** Meta Muse (Spark for text, vision for images) — Groq fallback
-- **Database:** Supabase Postgres with RLS
-- **Storage:** Supabase Storage (private buckets)
-- **Channels:** Instagram Messaging API (working), WhatsApp Cloud API (blocked, waitlist active)
-- **Payments:** Paystack test mode; USDC on Base via direct JSON-RPC (default Base Sepolia). Flutterwave/Mono/RefPay not used.
-- **Speech:** Intron Sahara (live; provider transcribe fallback)
-- **Frontend:** Next.js on Vercel (onboarding site)
-- **Hosting:** Render or Railway (API)
-
----
-
-## Current Status (Nov 4, 2026) — live
-
-- ✅ Live: backend on Render, web on Vercel, Instagram DMs auto-replied on a real test shop
-- ✅ LLM: Meta Muse primary (`muse-spark-1.3`), Groq fallback on any provider failure
-- ✅ Catalog: photo → Muse vision extraction → saved product; deterministic browse/prices in English, Pidgin, Yoruba
-- ✅ Buyer chat + voice notes: Intron Sahara transcription, pidgin replies, deterministic account-number answers
-- ✅ Payment verification: deterministic verdict engine (LLM never confirms payment) — benchmarked 20/20, **zero fake receipts confirmed** ([evals/report.md](evals/report.md), [docs/benchmark_muse.md](docs/benchmark_muse.md))
-- ✅ Seller login: Supabase magic link; Instagram connection and shop restored across devices/restarts
-- ✅ Dashboard: real inbox, catalog, Analysis tab (chat/customer/verification logs)
-- ⏳ WhatsApp: blocked by Meta (131031); waitlist active
-
-**Tests:** 238 passing. `pytest -q -m "not live"` green; CI green (ruff + pytest).
-
----
-
-## Design Principles
-
-1. **Hide all technical complexity.** No Meta app IDs, webhook URLs, or verify tokens visible.
-2. **Feel like a helpful assistant, not a form.** Conversational, warm, never bureaucratic.
-3. **Prove value before asking for work.** Sample reply demo first.
-4. **Never sound like surveillance.** Frame as "organizing your public posts," not "watching you."
-5. **WhatsApp number, not email.** Meet Nigerian sellers where they are.
-6. **"Do this later" on every step.** Partial setup is better than abandoned setup.
-
----
-
-## Setup (for Developers)
+## Setup (developers)
 
 ```bash
 git clone https://github.com/drizzy765/sell-safe && cd sell-safe
 cd backend
 python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env        # fill values locally; NEVER commit .env
+cp .env.example .env        # fill values locally; never commit .env
 
-# Run migrations in Supabase SQL editor
-# backend/app/db/migrations/0001_init.sql
-# backend/app/db/migrations/0002_catalog_drafts.sql
-# backend/app/db/migrations/0003_traces.sql
-# backend/app/db/migrations/0004_evidence_hashes.sql
-# backend/app/db/migrations/0005_whatsapp_waitlist.sql
-# backend/app/db/migrations/0006_crypto_payments.sql
-# backend/app/db/migrations/0007_instagram_sessions.sql
-# backend/app/db/migrations/0008_seller_accounts.sql
+# Apply migrations in the Supabase SQL editor, in order:
+# backend/app/db/migrations/0001_init.sql ... 0008_seller_accounts.sql
 
 uvicorn app.main:app --reload --port 8000
-
-# Tests
 pytest -q -m "not live"
 ```
 
-**LLM Provider:**
-- `LLM_PROVIDER=groq` — working now
-- `LLM_PROVIDER=meta` — when Meta credits available
+Key environment variables: `LLM_PROVIDER` (`meta` primary, `groq`
+fallback), `META_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INTERNAL_API_TOKEN`,
+Instagram app credentials. See `.env.example` for the full list.
 
----
+## Documentation
 
-## Docs
-
-- `docs/execution_plan.md` — Revised schedule (P0-P5)
-- `docs/architecture.md` — System design
-- `docs/payment_verification.md` — Verdict engine spec
-- `docs/harness_engineering.md` — Agent loop and state graph
-- `docs/data_model.md` — Database schema
-- `docs/design.md` — UI/UX tokens
-- `docs/meta.md` — WhatsApp blocked, Instagram working
-- `tasks/plan.md` — Implementation roadmap
-- `tasks/todo.md` — Detailed task list
-- `AGENTS.md` — Coding agent instructions
-- `.cursor/rules/` — Editor rules
-
----
-
-## Roadmap
-
-| Date | Milestone |
+| Document | Contents |
 |---|---|
-| Oct 30-31 | **P0–P7 + crypto:** largely in tree (verification, waitlist, demos, voice, fraud, USDC) |
-| Nov 1 | **Website redesign** (`docs/design/website-design-plan.md`) |
-| Nov 1–3 | **SellSafe-Bench** best-effort (partial OK; full bench optional for Meta) |
-| Nov 3–4 | Deploy + `v0.1-demo`, then **demo video last**, then submit by 18:00 WAT |
-
----
-
-## Never Cut
-
-- Payment verification (screenshot vs webhook)
-- Sample reply demo
-- Payment safety demo
-- Simplified Instagram connect
-- WhatsApp waitlist
-- Demo video
-
-## Cut If Behind
-
-- Profile import from posts
-- Chat-style onboarding
-- Voice transcription
-- Fraud memory
-- Daily summary
-- Payment reminders
-- Messenger adapter
-
----
+| [docs/benchmark.md](docs/benchmark.md) | Measured claims C1–C8 |
+| [docs/benchmark_muse.md](docs/benchmark_muse.md) | Muse model benchmark (submission) |
+| [docs/benchmark_micro1.md](docs/benchmark_micro1.md) | Full eval plan + results pack |
+| [docs/architecture.md](docs/architecture.md) | System design |
+| [docs/meta.md](docs/meta.md) | Meta app, webhook, and channel setup |
+| [docs/onboarding.md](docs/onboarding.md) | Seller onboarding flow |
+| [docs/github_rules.md](docs/github_rules.md) | Contribution rules |
+| [AGENTS.md](AGENTS.md) | Instructions for coding agents |
 
 ## License
 
-MIT
+Hackathon project; all rights reserved by the author unless a license file
+is added.
