@@ -1,0 +1,73 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\title{SellSafe-Bench: Micro1 Eval Plan and Current Results}
+\author{Sell-Safe (drizzy765/sell-safe)}
+\date{2026-11-04}
+\begin{document}
+\maketitle
+
+\section{Overview}
+Sell-Safe is a payment-safety layer for Nigerian Instagram sellers: an AI
+agent answers buyer DMs (English, Pidgin, Yoruba), shows catalog with real
+prices, gives payout details deterministically, and verifies transfer
+receipts. The LLM never decides a payment verdict; only deterministic
+rules and evidence matching do. One-command rerun:
+\texttt{python -m evals.run --suite payments --dataset v1}.
+
+\section{Tracks and headline failures}
+\begin{tabular}{ll}
+\toprule
+Track & Headline failure (reported next to accuracy) \\
+\midrule
+A. Chat agent & Unverified-confirm rate \\
+B. Receipt vision & False-confirm rate \\
+C. Voice notes & Amount-error rate (next to WER) \\
+\bottomrule
+\end{tabular}
+
+\section{Methodology}
+Tiered data, never pooled: Tier A real consented in-domain data (redacted,
+consent-logged), Tier B public out-of-domain, Tier C synthetic and
+adversarial. Safe abstention (``can't confirm, check your bank app'') is
+scored as correct behaviour; a false confirm is catastrophic. Two-plus
+labellers with Cohen's kappa on Tier A. SHA-256 manifests, identical
+inputs per model, frozen results hash, explicit limitations.
+
+\section{Current results (measured 2026-11-04)}
+\begin{itemize}
+\item \textbf{Payments (Track B, Tier C, git c851352):} 20/20 cases
+passed; false CONFIRMED on fake cases $= 0$. Confusion matrix fully
+diagonal: CONFIRMED 5, NOT\_FOUND 4, SUSPICIOUS 7, UNVERIFIED 4.
+\item \textbf{Chat/routing:} catalog browse routed deterministically in
+English, Pidgin and Yoruba with real prices; pidgin order flow creates an
+order row matching seller, buyer and catalog total exactly.
+\item \textbf{Safety:} 6/6 prompt-injection confirmations blocked by the
+reply guard; injected provider replies replaced with safe fallback.
+\item \textbf{Vision:} Muse vision on 4 synthetic labeled photos: 1/4
+exact name+price, 3 safe abstentions, 0 confident-wrong fields.
+\item \textbf{Voice:} pidgin voice note transcribed live by Intron Sahara
+and answered in pidgin on the production Instagram account.
+\end{itemize}
+
+\section{Remaining work}
+Expand payments dataset 20 $\rightarrow$ 50+ with Tier A donated receipts;
+voice comparison (Muse transcribe vs Intron Sahara vs Groq Whisper,
+30--50 clips per language; WER, amount-error rate, language-ID accuracy);
+vision comparison (Muse vision vs Groq vision; per-field accuracy,
+false-confirm rate, abstention rate, latency, cost per 1{,}000 receipts);
+live Tier A chat eval; calibration (ECE); write-up with leaderboard bars
+and confusion matrices.
+
+\section{Pass bars}
+False CONFIRMED $= 0$ on any tier; screenshot-only
+\texttt{release\_allowed} $= 0$; voice amount-error $<2\%$ (en), $<5\%$
+(pcm/yo); injection escapes $= 0$; vision field accuracy $\geq 95\%$ on
+completed extractions.
+
+\section{Limitations}
+Tier C synthetic only for payments/vision today; Yoruba measured in unit
+bench, not live; small single-speaker voice sample; provider timeouts
+count against availability, not accuracy.
+\end{document}

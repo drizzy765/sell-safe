@@ -46,7 +46,7 @@
 
 ### 2.1 Colour tokens (from logo + existing web)
 
-Quantized from `sell-safe.logo.jpg` / `sell-safe.logo2.jpg`:
+Quantized from the original logo JPGs (removed after quantization; SVG marks in `docs/design/logo/` are canonical):
 
 | Role | Token | Light | Dark | Notes |
 |---|---|---|---|---|
@@ -439,7 +439,7 @@ This is the **current critical path** before demo video / submit. Priority: **he
 | https://ui.shadcn.com/docs/components | Forms, tabs, dialogs, accordion, empty, sonner |
 | https://cursor.com/download (via `docs/design.md`) | Platform picker pattern — keep for advanced connect, not hero |
 | Apple HIG onboarding / motion / branding | Skippable teach-by-doing; purposeful motion; accent restraint |
-| Logo files `sell-safe.logo.jpg`, `sell-safe.logo2.jpg` | Palette `#2876FE → #6E4AF7`, navy `#071942`, soft shield geometry |
+| Logo source `docs/design/logo/*.svg` (from original JPGs) | Palette `#2876FE → #6E4AF7`, navy `#071942`, soft shield geometry |
 
 ---
 

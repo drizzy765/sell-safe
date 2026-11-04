@@ -1,6 +1,6 @@
 # Onboarding & dashboard plan
 
-Canonical feature checklist: [`ONBOARDING_FEATURES.md`](../ONBOARDING_FEATURES.md).
+Canonical feature checklist: [`onboarding_features.md`](onboarding_features.md).
 
 Dashboard v2 (approved mockups + acceptance tests): [`sellsafe-dashboard-v2/DASHBOARD_INBOX_PROMPT.md`](../sellsafe-dashboard-v2/DASHBOARD_INBOX_PROMPT.md).
 
