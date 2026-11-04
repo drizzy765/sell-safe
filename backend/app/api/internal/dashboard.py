@@ -13,6 +13,8 @@ from app.channels.instagram.adapter import InstagramAdapter
 from app.channels.instagram.conversations import InboxSyncReport, sync_instagram_inbox
 from app.db.echo_store import DEFAULT_ECHO_PERSIST_PATH, MemoryEchoStore, build_store
 from app.db.inbox_control import InboxControlStore
+from app.db.orders import MemoryOrderStore, build_order_store
+from app.db.payments import MemoryPaymentStore, build_payment_store
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -328,6 +330,46 @@ async def dashboard_summary(
         inbox = list(conversations) + _DEMO_CHATS
         receipts = list(_DEMO_RECEIPTS)
 
+    # Real verification stats from orders + payment verdicts (were hardcoded 0).
+    orders_count = 0
+    naira_verified = 0
+    fakes_caught = 0
+    try:
+        order_store = getattr(request.app.state, "orders", None)
+        if order_store is None:
+            settings_obj = request.app.state.settings
+            if getattr(settings_obj, "supabase_url", "") and getattr(
+                settings_obj, "supabase_service_role_key", ""
+            ):
+                order_store = build_order_store(settings_obj)
+            else:
+                order_store = MemoryOrderStore()
+            request.app.state.orders = order_store
+        payment_store = getattr(request.app.state, "payments", None)
+        if payment_store is None:
+            settings_obj = request.app.state.settings
+            if getattr(settings_obj, "supabase_url", "") and getattr(
+                settings_obj, "supabase_service_role_key", ""
+            ):
+                payment_store = build_payment_store(settings_obj)
+            else:
+                payment_store = MemoryPaymentStore()
+            request.app.state.payments = payment_store
+        seller_orders = order_store.list_orders(seller_id)
+        orders_count = len([o for o in seller_orders if o.get("status") != "cancelled"])
+        for order in seller_orders:
+            payment = payment_store.get_payment_for_order(str(order.get("id")))
+            if payment is None:
+                continue
+            verdict_row = payment_store.get_latest_verdict(str(payment.get("id")))
+            verdict_value = str((verdict_row or {}).get("verdict") or "")
+            if verdict_value == "CONFIRMED":
+                naira_verified += int(order.get("total_kobo") or 0) // 100
+            elif verdict_value in ("SUSPICIOUS", "UNVERIFIED"):
+                fakes_caught += 1
+    except Exception:
+        orders_count = 0
+
     pending_drafts = control.list_drafts(seller_id, status="pending")
     unread_total = sum(int(c.get("unread") or 0) for c in conversations)
 
@@ -341,9 +383,9 @@ async def dashboard_summary(
         "seller_id": seller_id,
         "stats": {
             "chats_today": chats_today,
-            "orders": 0,
-            "naira_verified": 0,
-            "fakes_caught": 0,
+            "orders": orders_count,
+            "naira_verified": naira_verified,
+            "fakes_caught": fakes_caught,
             "avg_reply_seconds": 0,
             "unread_inbox": unread_total,
             "pending_drafts": len(pending_drafts),
