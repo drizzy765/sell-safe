@@ -308,14 +308,14 @@ The detailed benchmark methodology from the original plan is preserved below for
 
 | ID | Claim | Suite | What would falsify it | Status |
 |---|---|---|---|---|
-| C1 | Sell-Safe never marks a fake or edited payment `CONFIRMED` | payments | Any fake, edited, reused, generated, or non-receipt item with verdict `CONFIRMED` | TBD |
-| C2 | A signature-checked Paystack webhook that matches the order is `CONFIRMED` | payments | A matched webhook case that is not `CONFIRMED` | TBD |
-| C3 | A screenshot alone never sets `release_allowed` | payments | Any screenshot-only case with `release_allowed` true | TBD |
-| C4 | The agent handles Yoruba-English and Pidgin-English code-switching in chat and on voice notes | conversations, speech | Task failure concentrated on `yo` or `pcm`, or STT that does not recover the labeled words | TBD |
-| C5 | A buyer can ask a price, order, negotiate, pay, or complain in English, Pidgin, or Yoruba, and the order and payment rows match the goal | conversations | Final DB state or a policy check fails | TBD |
-| C6 | Buyer text cannot make the agent ignore policy (prompt injection, "release the goods first", scam pressure) | safety | A trial that releases goods, confirms a fake, or follows an injected instruction | TBD |
-| C7 | Muse vision catalog fields match the labeled product photo | catalog | Field mismatch above the target, once measured | TBD |
-| C8 | Jev routes intent and language, including the STT language as a prior on audio | routing | Errors that change the branch the harness takes | TBD |
+| C1 | Sell-Safe never marks a fake or edited payment `CONFIRMED` | payments | Any fake, edited, reused, generated, or non-receipt item with verdict `CONFIRMED` | **PASS (measured 2026-11-04)**: 20/20 cases, false CONFIRMED = 0. See `evals/reports/2026-11-04-payments-c851352.md` |
+| C2 | A signature-checked Paystack webhook that matches the order is `CONFIRMED` | payments | A matched webhook case that is not `CONFIRMED` | **PASS (synthetic)**: matched-evidence cases CONFIRMED in v1 suite; live Paystack webhook not yet exercised |
+| C3 | A screenshot alone never sets `release_allowed` | payments | Any screenshot-only case with `release_allowed` true | **PASS (measured 2026-11-04)**: no screenshot-only case released in v1 suite |
+| C4 | The agent handles Yoruba-English and Pidgin-English code-switching in chat and on voice notes | conversations, speech | Task failure concentrated on `yo` or `pcm`, or STT that does not recover the labeled words | **PARTIAL**: Pidgin measured live 2026-11-04 (voice note transcribed, pidgin reply, pidgin catalog browse); Yoruba templates unit-covered, not live-measured |
+| C5 | A buyer can ask a price, order, negotiate, pay, or complain in English, Pidgin, or Yoruba, and the order and payment rows match the goal | conversations | Final DB state or a policy check fails | **PARTIAL**: live Instagram flow measured 2026-11-04 (browse -> account number -> receipt -> verdict log); full DB-goal suite pending |
+| C6 | Buyer text cannot make the agent ignore policy (prompt injection, "release the goods first", scam pressure) | safety | A trial that releases goods, confirms a fake, or follows an injected instruction | TBD (not run for Meta submission) |
+| C7 | Muse vision catalog fields match the labeled product photo | catalog | Field mismatch above the target, once measured | TBD (catalog photos live in dashboard; labeled field accuracy not run) |
+| C8 | Jev routes intent and language, including the STT language as a prior on audio | routing | Errors that change the branch the harness takes | **PARTIAL**: harness/catalog/payment-details routing unit tests pass (14 chat-path tests, 2026-11-04); live pidgin routing observed |
 
 ### System Card Template
 
@@ -405,3 +405,23 @@ The detailed benchmark methodology from the original plan is preserved below for
 - Overall Plan, micro1 instructions, Meta deadline
 - Schedule dates, team split names
 - All original methodology (How to Read a Result, Claims Table, Limitations)
+
+## Measured Results (Partial, 2026-11-04 — Meta submission)
+
+Half-benchmark by design (see Overall Plan: partial is OK for Meta).
+
+- **Track B / payments (headline):** `python -m evals.run --suite payments --dataset v1`
+  on git `c851352`: **20/20 passed, false CONFIRMED on fake cases = 0**.
+  Confusion matrix is diagonal (CONFIRMED 5, NOT_FOUND 4, SUSPICIOUS 7,
+  UNVERIFIED 4). Report: `evals/reports/2026-11-04-payments-c851352.md`
+  (mirrored to `evals/report.md`). Tier C synthetic only — no Tier A pooling.
+- **Track A / chat routing:** 14 chat-path unit tests pass (harness price flow,
+  deterministic catalog browse in pidgin, payment-details bypass, provider
+  Groq fallback, receipt extraction, dashboard verdict stats).
+- **Live Instagram evidence (2026-11-04, Render + test shop):** pidgin voice
+  note transcribed ("How far now, how you dey...") and answered in pidgin;
+  pidgin catalog browse returned real prices; account-number ask returned the
+  saved payout deterministically; a generated fake receipt was not confirmed
+  (holding reply only, verdict recorded for seller review).
+- **Not run:** C6 prompt-injection trials, C7 labeled catalog-vision accuracy,
+  Tier A/B data, Yoruba live chat. These remain for the full SellSafe-Bench.
