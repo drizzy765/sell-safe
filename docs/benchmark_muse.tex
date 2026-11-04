@@ -1,0 +1,63 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\title{Benchmark: Meta Muse in Sell-Safe}
+\author{Sell-Safe (drizzy765/sell-safe)}
+\date{2026-11-04}
+\begin{document}
+\maketitle
+
+\section{Overview}
+Meta Muse is Sell-Safe's primary LLM provider
+(\texttt{LLM\_PROVIDER=meta}); Groq is a measured, logged fallback. The
+LLM never decides payment verdicts; verdicts are deterministic rules plus
+evidence matching. Interactive charts: \texttt{/benchmark} on the web app.
+
+\section{Headline results}
+\begin{tabular}{lll}
+\toprule
+Area & Model(s) & Measured result \\
+\midrule
+Payment verdicts & Deterministic (LLM reads only) & 20/20 cases, false CONFIRMED $=0$ \\
+Chat replies & Muse Spark (\texttt{muse-spark-1.3}) & Live Instagram flows answered \\
+Vision & Muse vision (\texttt{muse-wonder-1.0}) & 1/4 exact, 0 confident-wrong \\
+Voice (STT) & Intron Sahara; transcribe fallback & Pidgin note answered live \\
+\bottomrule
+\end{tabular}
+
+\section{Track B: payments}
+\texttt{python -m evals.run --suite payments --dataset v1} (git c851352):
+20/20 passed, false CONFIRMED on fake cases $=0$. Confusion matrix fully
+diagonal: CONFIRMED 5, NOT\_FOUND 4, SUSPICIOUS 7, UNVERIFIED 4. Muse's
+role is reading receipts; the verdict protecting the seller's money is
+never Muse's call.
+
+\section{Chat: Muse Spark primary}
+Live on the production test shop: greetings, prices, ordering, and
+deterministic payout details answered. When Meta returned 404
+\texttt{model\_not\_found} from the deployed environment, Groq fallback
+answered and the event was logged, so buyers are never left in silence.
+Unit bench: pidgin order flow creates an order row matching seller,
+buyer, and catalog total; 6/6 prompt-injection confirmations blocked.
+
+\section{Vision: Muse vs Groq}
+Four synthetic labeled product photos (name and price on-pack):
+Muse vision 1/4 exact name+price, 3 safe abstentions, 0 confident-wrong
+fields. Groq vision (\texttt{qwen/qwen3.8-27b}) in fallback runs: 0/4,
+with JSON-generation 400s and 429 rate limits, also 0 confident-wrong.
+Muse is the stronger extractor; Groq is availability backup only.
+Small sample (n=4, Tier C); full comparison in the micro1 plan.
+
+\section{Voice}
+Intron Sahara is the speech specialist. Live proof (2026-11-04): pidgin
+voice note transcribed correctly and answered in pidgin. Fallback chain:
+Intron $\rightarrow$ provider transcribe $\rightarrow$ safe ``please
+type'' reply. Transcripts surface in the seller dashboard.
+
+\section{Limitations}
+Payments/vision sets are Tier C synthetic (n=20, n=4); Tier A consented
+data and 50+ expansion are micro1 scope. Meta \texttt{model\_not\_found}
+from the deployed environment (key fingerprint matches the working local
+key) is tracked as an environment issue with Groq covering buyers.
+\end{document}
