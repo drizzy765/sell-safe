@@ -132,7 +132,22 @@ export type Summary = {
   drafts: Product[];
   media: MediaItem[];
   inbox: Conversation[];
-  receipts: { id: string; verdict: string; amount_ngn: number; reasons: string[]; demo?: boolean }[];
+  receipts: { id: string; verdict: string; amount_ngn: number; reasons: string[]; demo?: boolean; order_ref?: string; buyer_id?: string }[];
+  analytics?: {
+    total_conversations: number;
+    total_customers: number;
+    languages: Record<string, number>;
+    ai_managed: number;
+    seller_takeover: number;
+    verdicts: Record<string, number>;
+    buyers_with_orders: number;
+    order_conversion_pct: number;
+    customers: {
+      buyer_id: string; buyer?: string; language?: string; last_message?: string;
+      orders: number; verified_ngn: number; fakes: number; last_verdict?: string;
+      unread?: number; paused?: boolean;
+    }[];
+  };
   reply_drafts?: ReplyDraft[];
   settings: DashboardSettings;
   demo_mode: boolean;

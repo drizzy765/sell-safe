@@ -27,6 +27,8 @@ class OrderStore(Protocol):
 
     def list_pending_payment_orders(self) -> list[dict]: ...
 
+    def list_orders(self, seller_id: str) -> list[dict]: ...
+
 
 class MemoryOrderStore:
     def __init__(self) -> None:
@@ -97,6 +99,9 @@ class MemoryOrderStore:
             for order in self.orders
             if order.get("status") in ("awaiting_payment", "payment_review")
         ]
+
+    def list_orders(self, seller_id: str) -> list[dict]:
+        return [o for o in self.orders if o.get("seller_id") == seller_id]
 
     def _next_ref(self, seller_id: str) -> str:
         counter = self._ref_counters.get(seller_id, 1000) + 1
@@ -189,6 +194,10 @@ class SupabaseOrderStore:
             .in_("status", ["awaiting_payment", "payment_review"])
             .execute()
         )
+        return found.data or []
+
+    def list_orders(self, seller_id: str) -> list[dict]:
+        found = self._client.table("orders").select("*").eq("seller_id", seller_id).execute()
         return found.data or []
 
     def _unique_ref(self) -> str:
