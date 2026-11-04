@@ -41,6 +41,7 @@ class HealthResponse(BaseModel):
     text_model: str = ""
     llm_key: str = "missing"
     llm_key_fingerprint: str = ""
+    fallback_model: str = ""
 
 
 def create_app(
@@ -119,6 +120,7 @@ def create_app(
             text_model=model,
             llm_key="set" if raw_key else "missing",
             llm_key_fingerprint=fingerprint,
+            fallback_model=resolved.groq_text_model if resolved.llm_provider == "meta" else "",
         )
 
     @app.get("/privacy", response_class=HTMLResponse)
