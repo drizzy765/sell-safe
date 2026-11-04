@@ -1,3 +1,6 @@
+# Development and test dependencies only (not installed in production).
+# Includes runtime deps so one install is enough locally and in CI.
+-r requirements.txt
 pytest>=8.3
 pytest-asyncio>=0.24
 ruff>=0.7
