@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/design/logo/mark-wordmark.svg" alt="Sell-Safe" width="300">
+</p>
+
 # Sell-Safe
 
 **Payment safety layer for Nigerian small sellers on Instagram.**
@@ -81,6 +85,39 @@ the shop, Instagram session, and dashboard are restored on any device.
 Design invariants: money is integer kobo; timestamps are UTC; every webhook
 verifies its signature on the raw body, dedupes, returns 200 fast, and
 processes asynchronously; no secrets in code or logs.
+
+### Architecture flowchart
+
+```mermaid
+flowchart TB
+    Buyer["Buyer on Instagram<br/>(text, voice note, receipt photo)"]
+    Webhook["Instagram webhook<br/>verify signature, dedupe, 200 fast"]
+    Voice["Voice note?<br/>Intron Sahara transcription<br/>(fallback: provider transcribe)"]
+    Router{"Agent harness<br/>intent + language routing<br/>English / Pidgin / Yoruba"}
+    Deterministic["Deterministic answers<br/>catalog browse, prices,<br/>saved payout details"]
+    Sales["Sales agent<br/>Meta Muse Spark<br/>(fallback: Groq, logged)"]
+    Catalog[("Supabase<br/>catalog, orders,<br/>payments, sessions")]
+    Vision["Receipt photo<br/>Muse vision extraction<br/>amount, recipient, reference"]
+    Verdict{"Deterministic verdict<br/>CONFIRMED / NOT_FOUND<br/>SUSPICIOUS / UNVERIFIED<br/>(never the LLM)"}
+    Dashboard["Seller dashboard<br/>inbox, verdicts, Analysis tab<br/>seller approves release"]
+    Reply["Reply to buyer<br/>in buyer's language"]
+    Seller["Seller<br/>magic-link login (Supabase Auth)<br/>connect Instagram once"]
+
+    Buyer --> Webhook --> Voice --> Router
+    Router -->|browse / price / pay details| Deterministic
+    Router -->|order / chat| Sales
+    Router -->|receipt photo| Vision
+    Deterministic --> Catalog
+    Sales --> Catalog
+    Vision --> Verdict
+    Catalog --> Verdict
+    Verdict --> Dashboard
+    Dashboard --> Reply --> Buyer
+    Deterministic --> Reply
+    Sales --> Reply
+    Seller --> Dashboard
+    Seller -.->|OAuth| Webhook
+```
 
 ## Benchmark
 
